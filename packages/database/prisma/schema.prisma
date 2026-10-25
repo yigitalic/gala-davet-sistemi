@@ -1,0 +1,484 @@
+// GALA & PR OPERASYON PLATFORMU (B2B SaaS) — VERİTABANI ŞEMASI (PRISMA ORM)
+// Kurumsal Standart: Sıfır Teknik Borç, Katı Tip Güvenliği, KVKK/PII Kriptografik Koruma
+// Dikkat: Şifreli alanlar (emailEncrypted, phoneEncrypted, totpSecretEncrypted, rawBodyEncrypted)
+// veritabanında kesinlikle düz metin (plaintext) tutulmaz. Uygulama katmanında AES-256-GCM ile şifrelenir.
+// Arama ve tekillik (UNIQUE) kısıtları için deterministik HMAC-SHA256 Blind Index alanları kullanılır.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ------------------------------------------------------------------------------
+// ENUMLAR (Sistem ve İş Mantığı Tipleri)
+// ------------------------------------------------------------------------------
+
+enum Role {
+  SUPER_ADMIN   // Sistem yöneticisi, tüm yetkiler ve denetim loglarına erişim
+  HOST_ADMIN    // Dağıtımcı Şirket PR Yöneticisi - Örn: The Walt Disney Company
+  PR_MANAGER    // Davetli yönetimi, LCV takibi, AI e-posta onayları
+  DOOR_STAFF    // Kapı karşılama ekibi, QR tarama ve giriş onaylama yetkisi
+  ANALYST       // Salt okunur raporlama, ROI ve duygu analizi metrikleri
+}
+
+enum GuestTag {
+  VIP                 // Protokol / A-List Davetliler
+  PRESS               // Basın / Medya Mensupları
+  INFLUENCER          // Sosyal Medya İçerik Üreticileri
+  MORNING_SCREENING   // Sabah Basın Gösterimi
+  GALA_NIGHT          // Ana Akşam Galası
+  SECONDARY           // İkincil / Yedek Davetli Grubu
+  CREW                // Film Ekibi & Oyuncular
+  SPONSOR             // Sponsor Temsilcileri
+  BLACKLIST           // Kara Listedeki Şahıslar
+}
+
+enum SocialPlatform {
+  INSTAGRAM
+  YOUTUBE
+  TIKTOK
+  X
+}
+
+enum ScrapeStatus {
+  IDLE
+  PENDING
+  COMPLETED
+  FAILED
+}
+
+enum EventStatus {
+  DRAFT       // Taslak aşamasında
+  PUBLISHED   // Davetiyeler gönderilebilir / Yayında
+  COMPLETED   // Etkinlik tamamlandı
+  ARCHIVED    // Arşivlendi
+}
+
+enum RsvpStatus {
+  PENDING     // Davetiye gönderildi, yanıt bekleniyor
+  CONFIRMED   // Katılım teyit edildi
+  DECLINED    // Katılamayacağını bildirdi
+  UNCERTAIN   // Belirsiz yanıt verdi (AI inceleme gerektirir)
+  WAITLIST    // Yedek listeye alındı
+}
+
+enum ResponseChannel {
+  EMAIL_LINK    // E-postadaki tek tıkla LCV linki üzerinden
+  AI_INBOUND    // Gelen e-posta yanıtının LLM ile otonom/onaylı işlenmesiyle
+  MANUAL        // PR Ekibi tarafından manuel güncellendi
+}
+
+enum AiClassification {
+  CONFIRMED
+  DECLINED
+  UNCERTAIN
+}
+
+enum AiReviewStatus {
+  AUTO_PROCESSED     // Güven skoru yüksek, otonom işlendi
+  NEEDS_REVIEW       // Belirsizlik veya karmaşık soru var, insan onayına düştü
+  APPROVED_AND_SENT  // PR Yöneticisi taslak yanıtı onayladı ve gönderildi
+  REJECTED           // PR Yöneticisi taslağı reddetti/manuel müdahale etti
+}
+
+enum ScanResult {
+  SUCCESS                  // Başarılı giriş
+  REPLAY_ATTACK_BLOCKED    // Aynı dinamik QR kod tekrar kullanıldı
+  EXPIRED_QR               // QR süresi (30sn pencere) dolmuş
+  REVOKED                  // Bilet iptal edilmiş
+  ALREADY_CHECKED_IN       // Bilet zaten kullanılmış (tekrar giriş hakkı yok)
+  INVALID_TOKEN            // Geçersiz HMAC/imza
+}
+
+enum SentimentType {
+  POSITIVE
+  NEUTRAL
+  NEGATIVE
+}
+
+enum AuditAction {
+  VIEW_PII          // Şifresi çözülmüş hassas veri görüntülendi
+  EXPORT_CSV        // Davetli listesi dışa aktarıldı
+  CREATE_GUEST      // Yeni davetli kaydı
+  UPDATE_GUEST      // Davetli bilgisi güncellendi
+  DELETE_GUEST      // Davetli silindi (KVKK silme hakkı)
+  OVERRIDE_RSVP     // Manuel LCV durum değişikliği
+  APPROVE_AI_INBOX  // AI taslak yanıtı onaylandı
+  REVOKE_TICKET     // Bilet iptal edildi
+  SCAN_QR           // Kapıda bilet tarandı
+  USER_LOGIN        // Personel oturum açtı
+}
+
+// ------------------------------------------------------------------------------
+// 1. KULLANICI VE YETKİLENDİRME (User)
+// ------------------------------------------------------------------------------
+
+model User {
+  id               String       @id @default(uuid())
+  email            String       @unique
+  passwordHash     String
+  firstName        String
+  lastName         String
+  role             Role         @default(PR_MANAGER)
+  isActive         Boolean      @default(true)
+  twoFactorEnabled Boolean      @default(false)
+  twoFactorSecret  String?      // TOTP secret for staff 2FA (şifreli tutulur)
+  lastLoginAt      DateTime?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  // Multi-Tenant Dağıtımcı Şirket Bağlantısı (HOST_ADMIN için zorunlu, SUPER_ADMIN için null)
+  organizationId   String?
+  organization     Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+
+  // İlişkiler
+  aiReviews        AiInboxReview[]
+  checkInLogs      CheckInLog[]
+  auditLogs        AuditLog[]
+
+  @@index([organizationId])
+  @@map("users")
+}
+
+// ------------------------------------------------------------------------------
+// 2. DAVETLİ CRM (Guest)
+// ------------------------------------------------------------------------------
+
+model Guest {
+  id                  String       @id @default(uuid())
+  firstName           String
+  lastName            String
+  company             String?
+  title               String?
+
+  // KVKK / PII Şifreli Alanlar (AES-256-GCM)
+  emailEncrypted      String       @db.Text
+  // Birebir eşleşme araması ve UNIQUE kısıtı için HMAC-SHA256 Blind Index
+  emailBlindIndex     String       @unique @db.VarChar(64)
+
+  phoneEncrypted      String?      @db.Text
+  phoneBlindIndex     String?      @unique @db.VarChar(64)
+
+  // Segmentasyon Etiketleri (PostgreSQL Enum Array)
+  tags                GuestTag[]   @default([])
+
+  // Sadakat ve Güvenilirlik Metrikleri
+  loyaltyScore        Float        @default(100.0)
+  totalInvited        Int          @default(0)
+  totalAttended       Int          @default(0)
+  lastMinuteCancels   Int          @default(0)
+  noShows             Int          @default(0)
+
+  // Kara Liste Yönetimi
+  isBlacklisted       Boolean      @default(false)
+  blacklistReason     String?      @db.Text
+
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+
+  // İlişkiler
+  socialProfiles      SocialProfile[]
+  invitations         Invitation[]
+  mentions            PostEventMention[]
+  organizationLinks   GuestOrganization[]
+
+  @@index([emailBlindIndex])
+  @@index([phoneBlindIndex])
+  @@index([isBlacklisted])
+  @@map("guests")
+}
+
+// ------------------------------------------------------------------------------
+// 3. SOSYAL MEDYA METRİKLERİ (SocialProfile)
+// ------------------------------------------------------------------------------
+
+model SocialProfile {
+  id              String          @id @default(uuid())
+  guestId         String
+  platform        SocialPlatform
+  handle          String          // örn: @oyuncu_ahmet
+  followerCount   Int             @default(0)
+  engagementRate  Float           @default(0.0) // Yüzde (örn: 3.45)
+  lastScrapedAt   DateTime?
+  scrapeStatus    ScrapeStatus    @default(IDLE)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  // İlişkiler
+  guest           Guest           @relation(fields: [guestId], references: [id], onDelete: Cascade)
+
+  @@unique([guestId, platform])
+  @@index([platform, handle])
+  @@map("social_profiles")
+}
+
+// ------------------------------------------------------------------------------
+// 4. ETKİNLİK (Event - Gala & Özel Gösterim)
+// ------------------------------------------------------------------------------
+
+model Event {
+  id              String          @id @default(uuid())
+  title           String          // Örn: "Dune 3 Türkiye Galası"
+  movieTitle      String          // Film Adı
+  description     String?         @db.Text
+  venue           String          // Örn: "Zorlu PSM Turkcell Sahnesi"
+  startsAt        DateTime        // Gala Başlangıç Saati
+  doorsOpenAt     DateTime        // Kapı Açılış Saati
+  capacity        Int             // Toplam Mekan Kapasitesi
+  status          EventStatus     @default(DRAFT)
+
+  // Multi-Tenant Dağıtımcı Şirket & Geçmiş Arşiv
+  organizationId      String?
+  isHistoricalArchive Boolean       @default(false)
+  organization        Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  // İlişkiler
+  invitations     Invitation[]
+  mentions        PostEventMention[]
+
+  @@index([status])
+  @@index([startsAt])
+  @@index([organizationId])
+  @@map("events")
+}
+
+// ------------------------------------------------------------------------------
+// 5. DAVETİYE VE LCV TAKİBİ (Invitation)
+// ------------------------------------------------------------------------------
+
+model Invitation {
+  id                  String           @id @default(uuid())
+  eventId             String
+  guestId             String
+  rsvpStatus          RsvpStatus       @default(PENDING)
+
+  // +1 Yönetimi
+  plusOneRequested    Int              @default(0)
+  plusOneApproved     Int              @default(0)
+  plusOneNames        String?          @db.Text // Yanında gelecek şahısların isimleri
+
+  // Tek tıkla LCV doğrulama belirteci (HMAC hash)
+  rsvpTokenHash       String           @unique @db.VarChar(64)
+
+  sentAt              DateTime?
+  respondedAt         DateTime?
+  responseChannel     ResponseChannel?
+
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+
+  // İlişkiler
+  event               Event            @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  guest               Guest            @relation(fields: [guestId], references: [id], onDelete: Cascade)
+  ticket              Ticket?
+  emailThreads        EmailThread[]
+  aiInboxReviews      AiInboxReview[]
+
+  @@unique([eventId, guestId])
+  @@index([eventId, rsvpStatus])
+  @@index([rsvpTokenHash])
+  @@map("invitations")
+}
+
+// ------------------------------------------------------------------------------
+// 6. ÇİFT YÖNLÜ AI GELEN KUTUSU (EmailThread & AiInboxReview)
+// ------------------------------------------------------------------------------
+
+model EmailThread {
+  id                  String           @id @default(uuid())
+  invitationId        String
+  inboundMessageId    String           @unique // Resend Message-ID
+  rawSubject          String
+  rawBodyEncrypted    String           @db.Text // AES-256-GCM ile şifrelenmiş e-posta gövdesi
+  fromEmailBlindIndex String?          @db.VarChar(64)
+  receivedAt          DateTime         @default(now())
+  createdAt           DateTime         @default(now())
+
+  // İlişkiler
+  invitation          Invitation       @relation(fields: [invitationId], references: [id], onDelete: Cascade)
+  aiInboxReview       AiInboxReview?
+
+  @@index([invitationId])
+  @@index([inboundMessageId])
+  @@map("email_threads")
+}
+
+model AiInboxReview {
+  id                  String           @id @default(uuid())
+  emailThreadId       String           @unique
+  invitationId        String
+  aiClassification    AiClassification
+  aiConfidence        Float            // 0.00 - 1.00 arası güven skoru
+  extractedPlusOne    Int?             // E-postadan çıkarılan +1 talebi
+  detectedQuestions   String?          @db.Text // Davetlinin sorduğu özel sorular (otopark, kıyafet kodu vb.)
+  aiDraftReply        String?          @db.Text // LLM tarafından hazırlanan önerilen yanıt metni
+  reviewStatus        AiReviewStatus   @default(NEEDS_REVIEW)
+  reviewedById        String?
+  reviewedAt          DateTime?
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+
+  // İlişkiler
+  emailThread         EmailThread      @relation(fields: [emailThreadId], references: [id], onDelete: Cascade)
+  invitation          Invitation       @relation(fields: [invitationId], references: [id], onDelete: Cascade)
+  reviewedBy          User?            @relation(fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  @@index([invitationId])
+  @@index([reviewStatus])
+  @@map("ai_inbox_reviews")
+}
+
+// ------------------------------------------------------------------------------
+// 7. KRİPTOGRAFİK DİNAMİK QR & KAPI GİRİŞİ (Ticket & CheckInLog)
+// ------------------------------------------------------------------------------
+
+model Ticket {
+  id                  String           @id @default(uuid())
+  invitationId        String           @unique
+  // Bilete özel TOTP/HMAC sırrı (AES-256-GCM ile şifreli)
+  totpSecretEncrypted String           @db.Text
+  isRevoked           Boolean          @default(false)
+  revokedAt           DateTime?
+  revokedReason       String?          @db.Text
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+
+  // İlişkiler
+  invitation          Invitation       @relation(fields: [invitationId], references: [id], onDelete: Cascade)
+  checkInLogs         CheckInLog[]
+
+  @@map("tickets")
+}
+
+model CheckInLog {
+  id                  String           @id @default(uuid())
+  ticketId            String
+  scannedById         String
+  scannedAt           DateTime         @default(now())
+  guestEnteredCount   Int              @default(1) // Asil davetli + refakatçi adedi
+  scanResult          ScanResult
+  deviceInfo          String?          @db.Text // PWA tarayıcı / cihaz modeli
+  ipAddress           String?          @db.VarChar(45) // IPv4 veya IPv6
+
+  // İlişkiler
+  ticket              Ticket           @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  scannedBy           User             @relation(fields: [scannedById], references: [id])
+
+  @@index([ticketId])
+  @@index([scannedById])
+  @@index([scannedAt])
+  @@map("check_in_logs")
+}
+
+// ------------------------------------------------------------------------------
+// 8. GALA SONRASI PR & ROI ANALİTİĞİ (PostEventMention)
+// ------------------------------------------------------------------------------
+
+model PostEventMention {
+  id                  String           @id @default(uuid())
+  eventId             String
+  guestId             String
+  platform            SocialPlatform
+  postUrl             String           @db.Text
+  postedAt            DateTime?
+  reachEstimate       Int              @default(0) // Tahmini erişim sayısı
+  likesCount          Int              @default(0)
+  commentsCount       Int              @default(0)
+  sentiment           SentimentType    @default(NEUTRAL)
+  sentimentScore      Float            @default(0.0) // -1.00 ile +1.00 arası
+  aiSummary           String?          @db.Text // Paylaşımın içerik özeti
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+
+  // İlişkiler
+  event               Event            @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  guest               Guest            @relation(fields: [guestId], references: [id], onDelete: Cascade)
+
+  @@index([eventId, platform])
+  @@index([guestId])
+  @@index([sentiment])
+  @@map("post_event_mentions")
+}
+
+// ------------------------------------------------------------------------------
+// 9. KVKK DENETİM İZİ (AuditLog)
+// ------------------------------------------------------------------------------
+
+model AuditLog {
+  id                  String           @id @default(uuid())
+  userId              String?          // İşlemi yapan personel (Anonim veya sistem ise null)
+  action              AuditAction
+  entityType          String           @db.VarChar(64) // Örn: "Guest", "Invitation", "Ticket"
+  entityId            String           @db.VarChar(64)
+  metadata            Json?            // Değişiklik öncesi/sonrası veya sorgulanan filtre bilgisi
+  ipAddress           String?          @db.VarChar(45)
+  userAgent           String?          @db.Text
+  createdAt           DateTime         @default(now())
+
+  // İlişkiler
+  user                User?            @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([entityType, entityId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+// ------------------------------------------------------------------------------
+// 10. MULTI-TENANT DAĞITIMCI ŞİRKET (Organization)
+// ------------------------------------------------------------------------------
+
+model Organization {
+  id                  String              @id @default(uuid())
+  name                String              // Örn: "The Walt Disney Company Türkiye", "Warner Bros. Discovery"
+  slug                String              @unique // Örn: "disney-tr", "warner-tr", "uip-tr"
+  logoUrl             String?
+  brandColor          String?             // Örn: "#0063e5"
+  isActive            Boolean             @default(true)
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+
+  // İlişkiler
+  users               User[]
+  events              Event[]
+  guestLinks          GuestOrganization[]
+
+  @@map("organizations")
+}
+
+// ------------------------------------------------------------------------------
+// 11. DAĞITIMCIYA ÖZEL DAVETLİ HAVUZU & PR DÖNÜŞÜM KARNESİ (GuestOrganization)
+// ------------------------------------------------------------------------------
+
+model GuestOrganization {
+  id                       String        @id @default(uuid())
+  guestId                  String
+  organizationId           String
+  hostCustomTags           GuestTag[]    @default([])
+  hostLoyaltyScore         Float         @default(100.0)
+  totalInvitedByHost       Int           @default(0)
+  totalAttendedForHost     Int           @default(0)
+  totalPostsForHost        Int           @default(0)
+  prConversionRate         Float         @default(0.0) // (totalPostsForHost / totalAttendedForHost) * 100
+  lastMinuteCancelsForHost  Int           @default(0)
+  noShowsForHost           Int           @default(0)
+  hostNotes                String?       @db.Text
+  createdAt                DateTime      @default(now())
+  updatedAt                DateTime      @updatedAt
+
+  // İlişkiler
+  guest                    Guest         @relation(fields: [guestId], references: [id], onDelete: Cascade)
+  organization             Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([guestId, organizationId])
+  @@index([organizationId])
+  @@map("guest_organizations")
+}

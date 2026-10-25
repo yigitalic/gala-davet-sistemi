@@ -1,0 +1,52 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: gala_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-gala_admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-gala_secret_dev_pass}
+      POSTGRES_DB: ${POSTGRES_DB:-gala_pr_db}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-gala_admin} -d ${POSTGRES_DB:-gala_pr_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - gala_network
+
+  redis:
+    image: redis:7-alpine
+    container_name: gala_redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-gala_redis_dev_pass}
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-gala_redis_dev_pass}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    networks:
+      - gala_network
+
+volumes:
+  postgres_data:
+    name: gala_postgres_data
+  redis_data:
+    name: gala_redis_data
+
+networks:
+  gala_network:
+    name: gala_network
+    driver: bridge

@@ -1,0 +1,29 @@
+{
+  "name": "@gala/database",
+  "version": "0.1.0",
+  "private": true,
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "clean": "rimraf dist",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:migrate:deploy": "prisma migrate deploy",
+    "db:studio": "prisma studio",
+    "db:validate": "prisma validate",
+    "db:seed": "node scripts/seed-runner.cjs"
+  },
+  "prisma": {
+    "seed": "node scripts/seed-runner.cjs"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.20.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.43",
+    "prisma": "^5.20.0",
+    "rimraf": "^6.0.1",
+    "typescript": "^5.5.4"
+  }
+}
