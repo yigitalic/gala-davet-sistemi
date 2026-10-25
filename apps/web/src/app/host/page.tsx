@@ -1,9 +1,45 @@
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { CheckCircle2, X } from 'lucide-react';
+import Link from 'next/link';
+import {
+  Film,
+  Calendar,
+  Users,
+  Mail,
+  Send,
+  Plus,
+  CheckCircle2,
+  Clock,
+  Sparkles,
+  Search,
+  ExternalLink,
+  ChevronRight,
+  TrendingUp,
+  Instagram,
+  Youtube,
+  ShieldCheck,
+  Building2,
+  UserCheck,
+  Moon,
+  Sun,
+  Filter,
+  Check,
+  AlertCircle,
+  X,
+  Compass,
+  FileText,
+  Flame,
+  Award,
+  ChevronDown,
+  Layers,
+  ArrowUpRight,
+  Download,
+  Share2,
+} from 'lucide-react';
 import { USER_EXCEL_GUESTS } from './host-guests-data';
 
+// --- VERİ TİPLERİ ---
 interface SocialStat {
   handle: string;
   followersText: string;
@@ -44,6 +80,7 @@ interface HostGala {
   id: string;
   title: string;
   movieTitle: string;
+  distributor: string;
   venue: string;
   doorsOpenAt: string;
   startsAt: string;
@@ -53,6 +90,9 @@ interface HostGala {
   isHistoricalArchive: boolean;
   archiveDate?: string;
   eventDateText: string;
+  bannerGradient: string;
+  synopsis: string;
+  targetAudience: string;
 }
 
 interface InboundMail {
@@ -64,134 +104,185 @@ interface InboundMail {
   receivedAt: string;
   aiClassification: 'CONFIRMED' | 'DECLINED' | 'QUESTION';
   status: 'PROCESSED' | 'NEEDS_AGENT_REVIEW';
+  galaTitle: string;
 }
 
-// ÖZELLEŞTİRİLEBİLİR ARKA PLAN PALETLERİ & YARDIMCILARI
-const BG_PRESETS = [
-  { id: 'WHITE', label: 'Düz Beyaz (#FFFFFF)', color: '#FFFFFF', isDark: false },
-  { id: 'CREAM', label: 'Sıcak Kağıt / Krem (#F7F5F0)', color: '#F7F5F0', isDark: false },
-  { id: 'LIGHT_GRAY', label: 'Açık Kurumsal Gri (#F1F5F9)', color: '#F1F5F9', isDark: false },
-  { id: 'DARK_ANTHRACITE', label: 'Koyu Antrasit (#09090B)', color: '#09090B', isDark: true },
-  { id: 'NIGHT_NAVY', label: 'Gece Laciverti (#0B1120)', color: '#0B1120', isDark: true },
+// --- MOCK VERİ SETİ (GÜNCEL & ZENGİN) ---
+const INITIAL_GALAS: HostGala[] = [
+  {
+    id: 'evt-disney-moana2',
+    title: 'Moana 2 Türkiye Özel Prömiyeri & Gala',
+    movieTitle: 'Moana 2',
+    distributor: 'Walt Disney Studios Türkiye',
+    venue: 'Zorlu PSM Turkcell Sahnesi & Kırmızı Halı, İstanbul',
+    doorsOpenAt: '18:30',
+    startsAt: '20:00',
+    capacity: 650,
+    confirmedLcv: 498,
+    occupancyRate: 76.6,
+    isHistoricalArchive: false,
+    eventDateText: '27 Kasım 2024, Çarşamba',
+    bannerGradient: 'from-amber-600/30 via-orange-950/40 to-zinc-950',
+    synopsis: 'Okyanusların çağrısına kulak veren Moana ve Maui, yeni maceraları için Türkiye prömiyerinde sinemaseverlerle buluşuyor.',
+    targetAudience: 'VIP Aileler, Popüler Kültür Influencerları, Ana Akım Basın',
+  },
+  {
+    id: 'evt-disney-mufasa',
+    title: 'Mufasa: Aslan Kral Özel Gösterimi',
+    movieTitle: 'Mufasa: Aslan Kral',
+    distributor: 'Walt Disney Studios Türkiye',
+    venue: 'Paribu Cineverse Kanyon VIP Salonu, İstanbul',
+    doorsOpenAt: '19:00',
+    startsAt: '20:15',
+    capacity: 380,
+    confirmedLcv: 290,
+    occupancyRate: 76.3,
+    isHistoricalArchive: false,
+    eventDateText: '18 Aralık 2024, Çarşamba',
+    bannerGradient: 'from-yellow-600/30 via-amber-950/40 to-zinc-950',
+    synopsis: 'Efsanevi kral Mufasa’nın yükselişi ve aslan krallığının başlangıç hikayesi özel basın ve davetli gösterimiyle sahnede.',
+    targetAudience: 'Kültür & Sanat Yazarları, Sinema Eleştirmenleri, A+ Oyuncular',
+  },
+  {
+    id: 'evt-disney-deadpool',
+    title: 'Deadpool & Wolverine Fan & VIP Galası (Arşiv)',
+    movieTitle: 'Deadpool & Wolverine',
+    distributor: 'Marvel Studios / Disney Türkiye',
+    venue: 'Kanyon AVM Özel Alanı',
+    doorsOpenAt: '19:30',
+    startsAt: '20:30',
+    capacity: 500,
+    confirmedLcv: 496,
+    occupancyRate: 99.2,
+    isHistoricalArchive: true,
+    archiveDate: '24 Temmuz 2024',
+    eventDateText: '24 Temmuz 2024 (Tamamlandı)',
+    bannerGradient: 'from-red-900/40 via-zinc-900/40 to-zinc-950',
+    synopsis: 'Yılın en çok ses getiren Marvel gişe rekortmeni için düzenlenen kırmızı halı ve cosplayer galası.',
+    targetAudience: 'Marvel Fan Kulüpleri, Sinema Basını, VIP Oyuncular',
+  },
+  {
+    id: 'evt-disney-insideout2',
+    title: 'Ters Yüz 2 (Inside Out 2) Basın & VIP Gösterimi (Arşiv)',
+    movieTitle: 'Ters Yüz 2',
+    distributor: 'Pixar / Disney Studios Türkiye',
+    venue: 'Akasya IMAX & VIP Fuaye, İstanbul',
+    doorsOpenAt: '18:00',
+    startsAt: '19:15',
+    capacity: 450,
+    confirmedLcv: 442,
+    occupancyRate: 98.2,
+    isHistoricalArchive: true,
+    archiveDate: '12 Haziran 2024',
+    eventDateText: '12 Haziran 2024 (Tamamlandı)',
+    bannerGradient: 'from-blue-800/30 via-indigo-950/40 to-zinc-950',
+    synopsis: 'Pixar’ın duygular evreni ergenlik dönemiyle genişlerken basın ve davetlilerden tam not aldı.',
+    targetAudience: 'Psikoloji & Aile Yazarları, Çocuklu Influencerlar, Çizerler',
+  },
 ];
 
-const parseFollowerCount = (txt: string): number => {
-  if (!txt) return 0;
-  const match = txt.trim().match(/([\d.]+)\s*([mMkK])/);
-  if (match) {
-    const val = parseFloat(match[1]);
-    const unit = match[2].toUpperCase();
-    if (unit === 'M') return Math.round(val * 1000000);
-    if (unit === 'K') return Math.round(val * 1000);
-  }
-  const digitsOnly = txt.replace(/[^\d]/g, '');
-  return parseInt(digitsOnly) || 0;
-};
-
-const formatFollowerCount = (count: number, suffix: 'Takipçi' | 'Abone'): string => {
-  if (count >= 1000000) {
-    const m = (count / 1000000).toFixed(1).replace('.0', '');
-    return `${m}M ${suffix}`;
-  }
-  if (count >= 1000) {
-    const k = (count / 1000).toFixed(count % 1000 === 0 ? 0 : 1).replace('.0', '');
-    return `${k}K ${suffix}`;
-  }
-  return `${count} ${suffix}`;
-};
-
-const getLuminance = (hex: string): number => {
-  if (!hex || !hex.startsWith('#')) return 1;
-  const c = hex.replace('#', '');
-  if (c.length === 3) {
-    const r = parseInt(c[0] + c[0], 16) / 255;
-    const g = parseInt(c[1] + c[1], 16) / 255;
-    const b = parseInt(c[2] + c[2], 16) / 255;
-    return 0.299 * r + 0.587 * g + 0.114 * b;
-  }
-  if (c.length === 6) {
-    const r = parseInt(c.substring(0, 2), 16) / 255;
-    const g = parseInt(c.substring(2, 4), 16) / 255;
-    const b = parseInt(c.substring(4, 6), 16) / 255;
-    return 0.299 * r + 0.587 * g + 0.114 * b;
-  }
-  return 1;
-};
-
-// GERÇEK VERİSETİ (YİĞİT ALİ ÇOLAKOĞLU 1. SIRADA & GÜNCEL TAKİPÇİLER)
-const DEFAULT_HOST_GUESTS: HostGuest[] = [
+const INITIAL_HOST_GUESTS: HostGuest[] = [
   {
-    id: 'go-disney-yigit-ali',
+    id: 'gst-yigit-ali',
     guestId: 'gst-vip-yigit-ali',
     firstName: 'Yiğit Ali',
     lastName: 'Çolakoğlu',
     email: 'yigitalicolakoglu22@gmail.com',
     maskedEmail: 'yigitalicolakoglu22@gmail.com',
     maskedPhone: '+90532*****22',
-    company: 'Disney Studios Türkiye / Özel Konuk',
-    title: 'VIP Davetli',
+    company: 'Disney Studios Türkiye / Özel Protokol',
+    title: 'VIP Davetli & Sistem Yöneticisi',
     category: 'PR',
-    hostCustomTags: ['VIP', 'SPECIAL_GUEST'],
+    hostCustomTags: ['VIP', 'PROTOKOL', 'A_LIST'],
     hostLoyaltyScore: 100.0,
-    instagram: { handle: '@yigitalicolakoglu', followersText: '1.5M Takipçi', count: 1500000 },
-    youtube: { handle: '@yigitalicolakoglu', followersText: '500K Abone', count: 500000 },
+    instagram: { handle: '@yigitalicolakoglu', followersText: '1.5M', count: 1500000 },
+    youtube: { handle: '@yigitalicolakoglu', followersText: '500K', count: 500000 },
     totalInvitedByHost: 5,
     totalAttendedForHost: 5,
     totalPostsForHost: 5,
     prConversionRate: 100.0,
     conversionTier: 'HIGH_IMPACT_CREATOR',
-    hostNotes: 'Disney Studios Türkiye Özel Konuğu & VIP Gala Katılımcısı.',
-    invitationState: 'IDLE',
-    plusOneAllowed: 1,
+    hostNotes: 'Disney Türkiye A+ Protokol Misafiri. Her galada özel koltuk tahsisi.',
+    invitationState: 'INVITED',
+    plusOneAllowed: 2,
+    lcvStatus: 'CONFIRMED',
+    lcvConfirmedAt: '1 saat önce',
   },
   {
-    id: 'go-disney-danla',
+    id: 'gst-danla-bilic',
     guestId: 'gst-06-infl-danla',
     firstName: 'Danla',
     lastName: 'Bilic',
     maskedEmail: 'da***@influencer.local',
     maskedPhone: '+90530*****88',
-    company: 'Dijital İletişim',
-    title: 'İçerik Üreticisi',
+    company: 'Dijital İletişim & Medya',
+    title: 'A+ İçerik Üreticisi',
     category: 'PR',
-    hostCustomTags: ['VIP', 'INFLUENCER'],
+    hostCustomTags: ['VIP', 'INFLUENCER', 'BEAUTY'],
     hostLoyaltyScore: 96.0,
-    instagram: { handle: '@danlabilic', followersText: '6.1M Takipçi', count: 6100000 },
-    youtube: { handle: '@danlabilic', followersText: '1.4M Abone', count: 1400000 },
+    instagram: { handle: '@danlabilic', followersText: '6.1M', count: 6100000 },
+    youtube: { handle: '@danlabilic', followersText: '1.4M', count: 1400000 },
     totalInvitedByHost: 5,
     totalAttendedForHost: 5,
     totalPostsForHost: 5,
     prConversionRate: 100.0,
     conversionTier: 'HIGH_IMPACT_CREATOR',
-    hostNotes: 'Disney animasyonlarını ve galalarını düzenli paylaşan A+ Influencer.',
+    hostNotes: 'Disney animasyon galalarında organik kırmızı halı ve story paylaşımları çok yüksek geri dönüş sağlıyor.',
     invitationState: 'INVITED',
     plusOneAllowed: 1,
+    lcvStatus: 'CONFIRMED',
+    lcvConfirmedAt: '12 dk önce',
   },
   {
-    id: 'go-disney-baris',
+    id: 'gst-baris-ozcan',
     guestId: 'gst-07-infl-baris',
     firstName: 'Barış',
     lastName: 'Özcan',
     maskedEmail: 'ba***@youtube.local',
     maskedPhone: '+90535*****99',
-    company: 'Görsel Anlatı Ltd.',
-    title: 'Kültür & Bilim İçerik Üreticisi',
+    company: 'Görsel Anlatı & Medya',
+    title: 'Kültür & Hikaye Anlatıcısı',
     category: 'PR',
-    hostCustomTags: ['VIP', 'INFLUENCER'],
+    hostCustomTags: ['VIP', 'INFLUENCER', 'CULTURE'],
     hostLoyaltyScore: 98.0,
-    instagram: { handle: '@barisozcan', followersText: '1.2M Takipçi', count: 1200000 },
-    youtube: { handle: '@barisozcan', followersText: '6.5M Abone', count: 6500000 },
+    instagram: { handle: '@barisozcan', followersText: '1.2M', count: 1200000 },
+    youtube: { handle: '@barisozcan', followersText: '6.5M', count: 6500000 },
     totalInvitedByHost: 4,
     totalAttendedForHost: 4,
     totalPostsForHost: 4,
     prConversionRate: 100.0,
     conversionTier: 'HIGH_IMPACT_CREATOR',
-    hostNotes: 'Sinema, animasyon ve derinlemesine inceleme videoları çok yüksek organik etkileşim getiriyor.',
+    hostNotes: 'Sinematografi ve animasyon teknolojisi odaklı derinlemesine YouTube videoları milyonlarca organik izlenme üretiyor.',
     invitationState: 'INVITED',
     plusOneAllowed: 1,
+    lcvStatus: 'CONFIRMED',
   },
   {
-    id: 'go-disney-kivanc',
+    id: 'gst-serenay-sarikaya',
+    guestId: 'gst-12-vip-serenay',
+    firstName: 'Serenay',
+    lastName: 'Sarıkaya',
+    maskedEmail: 'se***@idiletisim.com',
+    maskedPhone: '+90532*****11',
+    company: 'İD İletişim',
+    title: 'Sinema & Dizi Oyuncusu',
+    category: 'PR',
+    hostCustomTags: ['VIP', 'ACTOR', 'A_LIST'],
+    hostLoyaltyScore: 94.0,
+    instagram: { handle: '@serenayss', followersText: '11.2M', count: 11200000 },
+    youtube: null,
+    totalInvitedByHost: 3,
+    totalAttendedForHost: 3,
+    totalPostsForHost: 3,
+    prConversionRate: 100.0,
+    conversionTier: 'HIGH_IMPACT_CREATOR',
+    hostNotes: 'Kırmızı halı fotoğrafları ulusal magazin basınında ilk sırada manşet oluyor.',
+    invitationState: 'INVITED',
+    plusOneAllowed: 1,
+    lcvStatus: 'CONFIRMED',
+  },
+  {
+    id: 'gst-kivanc-tatlitug',
     guestId: 'gst-02-vip-kivanc',
     firstName: 'Kıvanç',
     lastName: 'Tatlıtuğ',
@@ -200,44 +291,22 @@ const DEFAULT_HOST_GUESTS: HostGuest[] = [
     company: 'Ay Yapım',
     title: 'Başrol Oyuncusu',
     category: 'PR',
-    hostCustomTags: ['VIP'],
-    hostLoyaltyScore: 90.0,
-    instagram: { handle: '@kivanctatlitug', followersText: '4.6M Takipçi', count: 4600000 },
+    hostCustomTags: ['VIP', 'ACTOR'],
+    hostLoyaltyScore: 89.0,
+    instagram: { handle: '@kivanctatlitug', followersText: '4.6M', count: 4600000 },
     youtube: null,
     totalInvitedByHost: 4,
     totalAttendedForHost: 4,
     totalPostsForHost: 1,
     prConversionRate: 25.0,
     conversionTier: 'LOW_PR_CONVERSION',
-    hostNotes: 'Son 4 Disney galasına katıldı fakat yalnızca 1 hikaye paylaştı. Düşük PR dönüşümü.',
+    hostNotes: 'Galalara fiziken katılıyor fakat sosyal medya paylaşım oranı düşük (%25). Özel röportaj için önceliklendirilmeli.',
     invitationState: 'IDLE',
     plusOneAllowed: 1,
+    lcvStatus: 'PENDING',
   },
   {
-    id: 'go-disney-serenay',
-    guestId: 'gst-12-vip-serenay',
-    firstName: 'Serenay',
-    lastName: 'Sarıkaya',
-    maskedEmail: 'se***@idiletisim.com',
-    maskedPhone: '+90532*****11',
-    company: 'İD İletişim',
-    title: 'Dizi & Sinema Oyuncusu',
-    category: 'PR',
-    hostCustomTags: ['VIP'],
-    hostLoyaltyScore: 94.0,
-    instagram: { handle: '@serenayss', followersText: '11.2M Takipçi', count: 11200000 },
-    youtube: null,
-    totalInvitedByHost: 3,
-    totalAttendedForHost: 3,
-    totalPostsForHost: 3,
-    prConversionRate: 100.0,
-    conversionTier: 'HIGH_IMPACT_CREATOR',
-    hostNotes: 'Kırmızı halıda yüksek görünürlük sağlıyor, galayı profilinde sabitliyor.',
-    invitationState: 'INVITED',
-    plusOneAllowed: 1,
-  },
-  {
-    id: 'go-disney-omur-gedik',
+    id: 'gst-omur-gedik',
     guestId: 'gst-01-press-omur',
     firstName: 'Ömür',
     lastName: 'Gedik',
@@ -246,21 +315,94 @@ const DEFAULT_HOST_GUESTS: HostGuest[] = [
     company: 'Hürriyet Kelebek',
     title: 'Kültür Sanat Yazarı & Sinema Eleştirmeni',
     category: 'PRESS',
-    hostCustomTags: ['PRESS', 'ACCREDITED'],
-    hostLoyaltyScore: 92.0,
-    instagram: { handle: '@omurgedik', followersText: '420K Takipçi', count: 420000 },
-    youtube: { handle: '@omurgedikofficial', followersText: '45K Abone', count: 45000 },
+    hostCustomTags: ['PRESS', 'ACCREDITED', 'CRITIC'],
+    hostLoyaltyScore: 95.0,
+    instagram: { handle: '@omurgedik', followersText: '420K', count: 420000 },
+    youtube: { handle: '@omurgedikofficial', followersText: '45K', count: 45000 },
     totalInvitedByHost: 6,
     totalAttendedForHost: 5,
     totalPostsForHost: 5,
     prConversionRate: 100.0,
     conversionTier: 'HIGH_IMPACT_CREATOR',
-    hostNotes: 'Köşe yazılarında ve Kelebek manşetinde Disney vizyon haberlerine geniş yer veriyor.',
+    hostNotes: 'Hürriyet Kelebek ve internet sayfasında filmlere tam sayfa vizyon değerlendirmesi ve röportaj ayırıyor.',
     invitationState: 'INVITED',
     plusOneAllowed: 1,
+    lcvStatus: 'CONFIRMED',
   },
   {
-    id: 'go-disney-burcu',
+    id: 'gst-mehmet-yilmaz',
+    guestId: 'gst-04-press-mehmet',
+    firstName: 'Mehmet',
+    lastName: 'Yılmaz',
+    maskedEmail: 'me***@hurriyet.com.tr',
+    maskedPhone: '+90542*****66',
+    company: 'Hürriyet Kültür Sanat',
+    title: 'Kültür & Sanat Baş Editörü',
+    category: 'PRESS',
+    hostCustomTags: ['PRESS', 'ACCREDITED'],
+    hostLoyaltyScore: 94.0,
+    instagram: { handle: '@mehmetyilmazsinema', followersText: '185K', count: 185000 },
+    youtube: null,
+    totalInvitedByHost: 6,
+    totalAttendedForHost: 5,
+    totalPostsForHost: 4,
+    prConversionRate: 80.0,
+    conversionTier: 'HIGH_IMPACT_CREATOR',
+    hostNotes: 'Gazete manşetlerinde Disney basın bültenlerini düzenli olarak işleyen kıdemli gazeteci.',
+    invitationState: 'INVITED',
+    plusOneAllowed: 1,
+    lcvStatus: 'CONFIRMED',
+  },
+  {
+    id: 'gst-kaan-kural',
+    guestId: 'gst-11-press-kaan',
+    firstName: 'Kaan',
+    lastName: 'Kural',
+    maskedEmail: 'ka***@medya.com',
+    maskedPhone: '+90542*****55',
+    company: 'Socrates Medya',
+    title: 'Yazar & Podcast Yayıncısı',
+    category: 'PRESS',
+    hostCustomTags: ['PRESS', 'PODCAST'],
+    hostLoyaltyScore: 91.0,
+    instagram: { handle: '@kaankural', followersText: '280K', count: 280000 },
+    youtube: { handle: '@socratesdergi', followersText: '750K', count: 750000 },
+    totalInvitedByHost: 4,
+    totalAttendedForHost: 4,
+    totalPostsForHost: 3,
+    prConversionRate: 75.0,
+    conversionTier: 'HIGH_IMPACT_CREATOR',
+    hostNotes: 'Kültür ve sinema sohbetlerinde Disney vizyon yapımlarına geniş yer veriyor.',
+    invitationState: 'IDLE',
+    plusOneAllowed: 1,
+    lcvStatus: 'PENDING',
+  },
+  {
+    id: 'gst-atil-inanc',
+    guestId: 'gst-05-press-atil',
+    firstName: 'Atıl',
+    lastName: 'İnanç',
+    maskedEmail: 'at***@sinemadergisi.com',
+    maskedPhone: '+90555*****77',
+    company: 'Sinema Kulübü & Dergisi',
+    title: 'Film Eleştirmeni & Yönetmen',
+    category: 'PRESS',
+    hostCustomTags: ['PRESS', 'CRITIC'],
+    hostLoyaltyScore: 92.0,
+    instagram: { handle: '@atilinanc', followersText: '42K', count: 42000 },
+    youtube: { handle: '@sinemaclubatil', followersText: '320K', count: 320000 },
+    totalInvitedByHost: 4,
+    totalAttendedForHost: 4,
+    totalPostsForHost: 3,
+    prConversionRate: 75.0,
+    conversionTier: 'HIGH_IMPACT_CREATOR',
+    hostNotes: 'Vizyon haftasında YouTube kanalında detaylı inceleme videosu yayınlıyor.',
+    invitationState: 'INVITED',
+    plusOneAllowed: 1,
+    lcvStatus: 'CONFIRMED',
+  },
+  {
+    id: 'gst-burcu-yildiz',
     guestId: 'gst-03-press-burcu',
     firstName: 'Burcu',
     lastName: 'Yıldız',
@@ -270,3245 +412,1346 @@ const DEFAULT_HOST_GUESTS: HostGuest[] = [
     title: 'Muhabir & Editör',
     category: 'PRESS',
     hostCustomTags: ['PRESS'],
-    hostLoyaltyScore: 82.0,
-    instagram: { handle: '@burcuyildiz_', followersText: '35K Takipçi', count: 35000 },
+    hostLoyaltyScore: 80.0,
+    instagram: { handle: '@burcuyildiz_', followersText: '35K', count: 35000 },
     youtube: null,
     totalInvitedByHost: 2,
     totalAttendedForHost: 2,
     totalPostsForHost: 0,
     prConversionRate: 0.0,
     conversionTier: 'GHOST_ATTENDEE',
-    hostNotes: 'Galalara düzenli katılım sağlıyor ancak basılı veya dijital haber dönüşü raporlanmadı.',
+    hostNotes: 'Son 2 galaya katıldı fakat haber dönüşü raporlanmadı. Kota takip edilmeli.',
     invitationState: 'WAITLIST',
     plusOneAllowed: 0,
-  },
-  {
-    id: 'go-disney-kaan',
-    guestId: 'gst-11-press-kaan',
-    firstName: 'Kaan',
-    lastName: 'Kural',
-    maskedEmail: 'ka***@medya.com',
-    maskedPhone: '+90542*****55',
-    company: 'Socrates Dergi',
-    title: 'Yazar & Podcast Yayıncısı',
-    category: 'PRESS',
-    hostCustomTags: ['PRESS', 'PODCAST'],
-    hostLoyaltyScore: 88.0,
-    instagram: { handle: '@kaankural', followersText: '280K Takipçi', count: 280000 },
-    youtube: { handle: '@socratesdergi', followersText: '750K Abone', count: 750000 },
-    totalInvitedByHost: 4,
-    totalAttendedForHost: 4,
-    totalPostsForHost: 3,
-    prConversionRate: 75.0,
-    conversionTier: 'HIGH_IMPACT_CREATOR',
-    hostNotes: 'Sinema ve popüler kültür podcastlerinde Disney filmleri hakkında organik referans veriyor.',
-    invitationState: 'IDLE',
-    plusOneAllowed: 1,
-  },
-  {
-    id: 'go-disney-haluk',
-    guestId: 'gst-01-vip-haluk',
-    firstName: 'Haluk',
-    lastName: 'Bilginer',
-    maskedEmail: 'ha***@sanat.local',
-    maskedPhone: '+90532*****33',
-    company: 'Tiyatro & Sinema Oyuncuları Derneği',
-    title: 'Onur Konuğu & Emmy Ödüllü Sanatçı',
-    category: 'PR',
-    hostCustomTags: ['VIP', 'CREW'],
-    hostLoyaltyScore: 98.5,
-    instagram: { handle: '@halukbilginer_official', followersText: '450K Takipçi', count: 450000 },
-    youtube: null,
-    totalInvitedByHost: 5,
-    totalAttendedForHost: 5,
-    totalPostsForHost: 5,
-    prConversionRate: 100.0,
-    conversionTier: 'HIGH_IMPACT_CREATOR',
-    hostNotes: 'Onur konuğu, Disney animasyon ve dublaj prömiyerlerine katılıyor.',
-    invitationState: 'INVITED',
-    plusOneAllowed: 1,
-  },
-  {
-    id: 'go-disney-zerrin',
-    guestId: 'gst-03-vip-zerrin',
-    firstName: 'Zerrin',
-    lastName: 'Tekindor',
-    maskedEmail: 'ze***@tiyatro.local',
-    maskedPhone: '+90532*****55',
-    company: 'Oyun Atölyesi',
-    title: 'Devlet Sanatçısı & Tiyatro Oyuncusu',
-    category: 'PR',
-    hostCustomTags: ['VIP'],
-    hostLoyaltyScore: 99.0,
-    instagram: { handle: '@zerrintekindor', followersText: '980K Takipçi', count: 980000 },
-    youtube: null,
-    totalInvitedByHost: 4,
-    totalAttendedForHost: 4,
-    totalPostsForHost: 4,
-    prConversionRate: 100.0,
-    conversionTier: 'HIGH_IMPACT_CREATOR',
-    hostNotes: 'Galalarda yüksek saygınlık ve katılım sağlayan usta oyuncu.',
-    invitationState: 'INVITED',
-    plusOneAllowed: 1,
-  },
-  {
-    id: 'go-disney-ece',
-    guestId: 'gst-13-pr-ece',
-    firstName: 'Ece',
-    lastName: 'Hançer',
-    maskedEmail: 'eh***@oyuncu.com',
-    maskedPhone: '+90533*****33',
-    company: 'Persona Menajerlik',
-    title: 'Oyuncu & Yetenek Danışmanı',
-    category: 'PR',
-    hostCustomTags: ['PR', 'TALENT'],
-    hostLoyaltyScore: 90.0,
-    instagram: { handle: '@ecehancer', followersText: '180K Takipçi', count: 180000 },
-    youtube: null,
-    totalInvitedByHost: 3,
-    totalAttendedForHost: 3,
-    totalPostsForHost: 3,
-    prConversionRate: 100.0,
-    conversionTier: 'HIGH_IMPACT_CREATOR',
-    hostNotes: 'Gala kırmızı halı etkinliklerini düzenli olarak hikayelerinde paylaşıyor.',
-    invitationState: 'INVITED',
-    plusOneAllowed: 1,
-  },
-  {
-    id: 'go-disney-mehmet',
-    guestId: 'gst-04-press-mehmet',
-    firstName: 'Mehmet',
-    lastName: 'Yılmaz',
-    maskedEmail: 'me***@hurriyet.com.tr',
-    maskedPhone: '+90542*****66',
-    company: 'Hürriyet Sinema',
-    title: 'Kültür & Sanat Baş Editörü',
-    category: 'PRESS',
-    hostCustomTags: ['PRESS', 'ACCREDITED'],
-    hostLoyaltyScore: 94.0,
-    instagram: { handle: '@mehmetyilmazsinema', followersText: '185K Takipçi', count: 185000 },
-    youtube: null,
-    totalInvitedByHost: 6,
-    totalAttendedForHost: 5,
-    totalPostsForHost: 4,
-    prConversionRate: 80.0,
-    conversionTier: 'HIGH_IMPACT_CREATOR',
-    hostNotes: 'Basın gösterimlerini eksiksiz takip eden sinema eleştirmeni.',
-    invitationState: 'INVITED',
-    plusOneAllowed: 1,
-  },
-  {
-    id: 'go-disney-atil',
-    guestId: 'gst-05-press-atil',
-    firstName: 'Atıl',
-    lastName: 'İnanç',
-    maskedEmail: 'at***@sinemadergisi.com',
-    maskedPhone: '+90555*****77',
-    company: 'Sinema Dergisi',
-    title: 'Film Eleştirmeni & Yönetmen',
-    category: 'PRESS',
-    hostCustomTags: ['PRESS'],
-    hostLoyaltyScore: 91.0,
-    instagram: { handle: '@atilinanc', followersText: '42K Takipçi', count: 42000 },
-    youtube: { handle: '@sinemaclubatil', followersText: '320K Abone', count: 320000 },
-    totalInvitedByHost: 4,
-    totalAttendedForHost: 4,
-    totalPostsForHost: 3,
-    prConversionRate: 75.0,
-    conversionTier: 'HIGH_IMPACT_CREATOR',
-    hostNotes: 'YouTube kanalında derinlemesine vizyon incelemeleri yayınlıyor.',
-    invitationState: 'IDLE',
-    plusOneAllowed: 1,
-  },
-  {
-    id: 'go-disney-selin',
-    guestId: 'gst-08-morning-selin',
-    firstName: 'Selin',
-    lastName: 'Gökbakar',
-    maskedEmail: 'se***@beyazperde.local',
-    maskedPhone: '+90536*****00',
-    company: 'Beyazperde.com',
-    title: 'Kıdemli Muhabir & Eleştirmen',
-    category: 'PRESS',
-    hostCustomTags: ['PRESS', 'DIGITAL'],
-    hostLoyaltyScore: 93.0,
-    instagram: { handle: '@selingokbakar', followersText: '240K Takipçi', count: 240000 },
-    youtube: { handle: '@filminceliyor', followersText: '110K Abone', count: 110000 },
-    totalInvitedByHost: 5,
-    totalAttendedForHost: 5,
-    totalPostsForHost: 4,
-    prConversionRate: 80.0,
-    conversionTier: 'HIGH_IMPACT_CREATOR',
-    hostNotes: 'Dijital sinema portalında ilk gün özel gösterim yazıları hazırlıyor.',
-    invitationState: 'INVITED',
-    plusOneAllowed: 1,
+    lcvStatus: 'PENDING',
   },
   ...(USER_EXCEL_GUESTS as unknown as HostGuest[]),
 ];
 
-export default function HostPortalPage() {
-  // 1. TEMA & ÖZELLEŞTİRİLEBİLİR ARKA PLAN MOTORU (localStorage: 'gala_host_theme' & 'gala_host_bg_v15')
-  const [theme, setTheme] = useState<'dark' | 'light'>('light');
-  const [customBgColor, setCustomBgColor] = useState<string>('#FFFFFF');
-  const [customBgImage, setCustomBgImage] = useState<string>('');
-  const [bgPreset, setBgPreset] = useState<string>('WHITE');
-  const [isBgSelectorOpen, setIsBgSelectorOpen] = useState<boolean>(false);
+const INITIAL_INBOUND_MAILS: InboundMail[] = [
+  {
+    id: 'mail-01',
+    fromName: 'Danla Bilic',
+    fromEmail: 'da***@influencer.local',
+    subject: 'Re: Moana 2 Türkiye Özel Prömiyeri Davetiyesi',
+    preview: 'Harika bir haber! Eşimle birlikte seve seve katılıyoruz, kırmızı halıda görüşmek üzere ✨',
+    receivedAt: '12 dk önce',
+    aiClassification: 'CONFIRMED',
+    status: 'PROCESSED',
+    galaTitle: 'Moana 2',
+  },
+  {
+    id: 'mail-02',
+    fromName: 'Ömür Gedik',
+    fromEmail: 'om***@kelebek.com.tr',
+    subject: 'Re: Moana 2 Basın Kiti & Akreditasyon',
+    preview: 'Basın kiti linki ve VIP bilet için teşekkürler. Fuaye alanında yönetmen röportajı yapabilir miyiz?',
+    receivedAt: '45 dk önce',
+    aiClassification: 'QUESTION',
+    status: 'NEEDS_AGENT_REVIEW',
+    galaTitle: 'Moana 2',
+  },
+  {
+    id: 'mail-03',
+    fromName: 'Barış Özcan',
+    fromEmail: 'ba***@youtube.local',
+    subject: 'Re: Özel Gösterim LCV Onayı',
+    preview: 'Davetiniz için teşekkür ederim. Gösterimde olacağım, animasyon tekniği hakkında kısa bir video planlıyorum.',
+    receivedAt: '2 saat önce',
+    aiClassification: 'CONFIRMED',
+    status: 'PROCESSED',
+    galaTitle: 'Moana 2',
+  },
+  {
+    id: 'mail-04',
+    fromName: 'Kıvanç Tatlıtuğ (Asistanı Melis)',
+    fromEmail: 'ki***@ayyapim.local',
+    subject: 'Set Programı & LCV Durumu',
+    preview: 'Kıvanç Bey dizi setindeki çekim takvimine göre durumu yarın öğleye kadar kesinleştirecek.',
+    receivedAt: '3 saat önce',
+    aiClassification: 'QUESTION',
+    status: 'NEEDS_AGENT_REVIEW',
+    galaTitle: 'Moana 2',
+  },
+];
 
-  useEffect(() => {
-    try {
-      const savedBg = localStorage.getItem('gala_host_bg_v15');
-      if (savedBg) {
-        if (savedBg.startsWith('{')) {
-          const parsed = JSON.parse(savedBg);
-          if (parsed.color) setCustomBgColor(parsed.color);
-          if (parsed.imageUrl !== undefined) setCustomBgImage(parsed.imageUrl);
-          if (parsed.preset) setBgPreset(parsed.preset);
-          const lum = getLuminance(parsed.color || '#FFFFFF');
-          setTheme(lum < 0.5 ? 'dark' : 'light');
-        } else if (savedBg.startsWith('#')) {
-          setCustomBgColor(savedBg);
-          const lum = getLuminance(savedBg);
-          setTheme(lum < 0.5 ? 'dark' : 'light');
-        }
-      } else {
-        const savedTheme = localStorage.getItem('gala_host_theme') as 'dark' | 'light' | null;
-        if (savedTheme === 'dark') {
-          setCustomBgColor('#09090B');
-          setBgPreset('DARK_ANTHRACITE');
-          setTheme('dark');
-        } else {
-          setCustomBgColor('#FFFFFF');
-          setBgPreset('WHITE');
-          setTheme('light');
-        }
-      }
-    } catch {}
+export default function LuxuryHostPortal() {
+  // --- TEMA VE NAVİGASYON DURUMU ---
+  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+  const isDark = theme === 'dark';
 
-    try {
-      const savedGalas = localStorage.getItem('gala_host_events_v16');
-      if (savedGalas) {
-        const parsed = JSON.parse(savedGalas);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setGalas(parsed);
-        }
-      }
-    } catch {}
+  // Aktif Sekme: 'hub' (Ana Merkez) | 'gala' (Seçili Gala Detayı) | 'pr' (PR & VIP Listesi) | 'press' (Basın Listesi) | 'archive' (Geçmiş Arşiv)
+  const [activeTab, setActiveTab] = useState<'hub' | 'gala' | 'pr' | 'press' | 'archive'>('hub');
 
-    try {
-      const savedGuests = localStorage.getItem('gala_host_guests_v16') || localStorage.getItem('gala_host_guests_v15');
-      if (savedGuests) {
-        const parsed = JSON.parse(savedGuests);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          const hasYigit = parsed.some(
-            (g: any) => g.id === 'go-disney-yigit-ali' || g.email === 'yigitalicolakoglu22@gmail.com'
-          );
-          if (!hasYigit) {
-            const yigitAli = DEFAULT_HOST_GUESTS[0];
-            const merged = [yigitAli, ...parsed];
-            setGuests(merged);
-            localStorage.setItem('gala_host_guests_v16', JSON.stringify(merged));
-            localStorage.setItem('gala_host_guests_v15', JSON.stringify(merged));
-          } else {
-            setGuests(parsed);
-          }
-        }
-      }
-    } catch {}
-  }, []);
-
-  const handleSetTheme = (newTheme: 'dark' | 'light') => {
-    setTheme(newTheme);
-    const color = newTheme === 'dark' ? '#09090B' : '#FFFFFF';
-    setCustomBgColor(color);
-    setBgPreset(newTheme === 'dark' ? 'DARK_ANTHRACITE' : 'WHITE');
-    try {
-      localStorage.setItem('gala_host_theme', newTheme);
-      localStorage.setItem(
-        'gala_host_bg_v15',
-        JSON.stringify({ color, preset: newTheme === 'dark' ? 'DARK_ANTHRACITE' : 'WHITE', imageUrl: customBgImage })
-      );
-    } catch {}
-  };
-
-  const handleSelectBgPreset = (preset: (typeof BG_PRESETS)[0]) => {
-    setCustomBgColor(preset.color);
-    setBgPreset(preset.id);
-    const newTheme = preset.isDark ? 'dark' : 'light';
-    setTheme(newTheme);
-    try {
-      localStorage.setItem(
-        'gala_host_bg_v15',
-        JSON.stringify({ color: preset.color, preset: preset.id, imageUrl: customBgImage })
-      );
-      localStorage.setItem('gala_host_theme', newTheme);
-    } catch {}
-    showToast(`Arka plan değiştirildi: ${preset.label}`);
-  };
-
-  const handleCustomColorChange = (color: string) => {
-    setCustomBgColor(color);
-    setBgPreset('CUSTOM');
-    const lum = getLuminance(color);
-    const newTheme = lum < 0.5 ? 'dark' : 'light';
-    setTheme(newTheme);
-    try {
-      localStorage.setItem(
-        'gala_host_bg_v15',
-        JSON.stringify({ color, preset: 'CUSTOM', imageUrl: customBgImage })
-      );
-      localStorage.setItem('gala_host_theme', newTheme);
-    } catch {}
-  };
-
-  const handleCustomImageChange = (url: string) => {
-    setCustomBgImage(url);
-    try {
-      localStorage.setItem(
-        'gala_host_bg_v15',
-        JSON.stringify({ color: customBgColor, preset: bgPreset, imageUrl: url })
-      );
-    } catch {}
-  };
-
-  const isLight = theme === 'light';
-
-  // Aktif Menü Sekmesi: 'ALL' | 'PR' | 'PRESS' | 'COCKPIT'
-  const [activeNav, setActiveNav] = useState<'ALL' | 'PR' | 'PRESS' | 'COCKPIT'>('ALL');
-
-  // Galalar Listesi: Sıradaki 2 + Geçmiş 2
-  const [galas, setGalas] = useState<HostGala[]>([
-    {
-      id: 'evt-disney-moana2',
-      title: 'Moana 2 Türkiye Özel Galası',
-      movieTitle: 'Moana 2',
-      venue: 'Zorlu PSM',
-      doorsOpenAt: '19:00',
-      startsAt: '20:30',
-      capacity: 700,
-      confirmedLcv: 540,
-      occupancyRate: 77.1,
-      isHistoricalArchive: false,
-      eventDateText: '28 Kasım 2026, 19:00',
-    },
-    {
-      id: 'evt-disney-mufasa',
-      title: 'Mufasa: Aslan Kral Basın Ön Gösterimi',
-      movieTitle: 'Mufasa: The Lion King',
-      venue: 'Kanyon Paribu Cineverse Salon 2',
-      doorsOpenAt: '10:00',
-      startsAt: '11:00',
-      capacity: 280,
-      confirmedLcv: 195,
-      occupancyRate: 69.6,
-      isHistoricalArchive: false,
-      eventDateText: '18 Aralık 2026, 10:00',
-    },
-    {
-      id: 'evt-disney-inside-out-2-archive',
-      title: 'Ters Yüz 2 (Inside Out 2) Arşiv Galası',
-      movieTitle: 'Inside Out 2',
-      venue: 'Zorlu PSM Ana Tiyatro',
-      doorsOpenAt: '18:30',
-      startsAt: '20:00',
-      capacity: 600,
-      confirmedLcv: 580,
-      occupancyRate: 96.6,
-      isHistoricalArchive: true,
-      archiveDate: '14 Haziran 2024',
-      eventDateText: '14 Haziran 2024 (Tamamlandı)',
-    },
-    {
-      id: 'evt-disney-deadpool-archive',
-      title: 'Deadpool & Wolverine Basın Prömiyeri',
-      movieTitle: 'Deadpool & Wolverine',
-      venue: 'Paribu Cineverse Akasya IMAX',
-      doorsOpenAt: '20:00',
-      startsAt: '21:00',
-      capacity: 450,
-      confirmedLcv: 442,
-      occupancyRate: 98.2,
-      isHistoricalArchive: true,
-      archiveDate: '25 Temmuz 2024',
-      eventDateText: '25 Temmuz 2024 (Tamamlandı)',
-    },
-  ]);
-
+  // Galalar ve Seçili Gala
+  const [galas, setGalas] = useState<HostGala[]>(INITIAL_GALAS);
   const [selectedGalaId, setSelectedGalaId] = useState<string>('evt-disney-moana2');
-  const selectedGala = (galas.find((g) => g.id === selectedGalaId) || galas[0]) as HostGala;
+  const selectedGala = useMemo(
+    () => galas.find((g) => g.id === selectedGalaId) || galas[0],
+    [galas, selectedGalaId]
+  );
 
-  // Gelen E-postalar (Host AI Agent Entegrasyonu)
-  const [inboundMails, setInboundMails] = useState<InboundMail[]>([
-    {
-      id: 'mail-01',
-      fromName: 'Danla Bilic',
-      fromEmail: 'da***@influencer.local',
-      subject: 'Re: Moana 2 Türkiye Özel Galası Davetiyesi',
-      preview: 'Harika bir haber! Eşimle birlikte seve seve katılıyoruz, görüşmek üzere.',
-      receivedAt: '12 dk önce',
-      aiClassification: 'CONFIRMED',
-      status: 'PROCESSED',
-    },
-    {
-      id: 'mail-02',
-      fromName: 'Ömür Gedik',
-      fromEmail: 'om***@kelebek.com.tr',
-      subject: 'Re: Moana 2 Basın Kiti & Akreditasyon',
-      preview: 'Basın kiti linki için teşekkürler. Kırmızı halı röportajı yapabilir miyiz?',
-      receivedAt: '45 dk önce',
-      aiClassification: 'QUESTION',
-      status: 'NEEDS_AGENT_REVIEW',
-    },
-    {
-      id: 'mail-03',
-      fromName: 'Kıvanç Tatlıtuğ Menajerlik',
-      fromEmail: 'ki***@ayyapim.local',
-      subject: 'Re: Moana 2 Gala Katılım Durumu',
-      preview: 'Set takvimi nedeniyle akşam 20:30 seansına gecikmeli katılım sağlayabilecektir.',
-      receivedAt: '2 saat önce',
-      aiClassification: 'CONFIRMED',
-      status: 'PROCESSED',
-    },
-  ]);
-
-  // Davetli Havuzu
-  const [guests, setGuests] = useState<HostGuest[]>(DEFAULT_HOST_GUESTS);
-
+  // Misafir Veritabanı
+  const [guests, setGuests] = useState<HostGuest[]>(INITIAL_HOST_GUESTS);
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeFilter, setActiveFilter] = useState('ALL');
+  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<'ALL' | 'PR' | 'PRESS'>('ALL');
+  const [selectedConversionFilter, setSelectedConversionFilter] = useState<string>('ALL');
 
-  // Modallar
-  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
-  const [isAddGuestModalOpen, setIsAddGuestModalOpen] = useState(false);
-  const [isEditGuestModalOpen, setIsEditGuestModalOpen] = useState(false);
+  // Gelen E-postalar
+  const [inboundMails, setInboundMails] = useState<InboundMail[]>(INITIAL_INBOUND_MAILS);
+
+  // Yan Çekmece (Guest Detail Drawer)
   const [selectedGuestForDrawer, setSelectedGuestForDrawer] = useState<HostGuest | null>(null);
-  const [isCsvModalOpen, setIsCsvModalOpen] = useState(false);
-  const [isEventModalOpen, setIsEventModalOpen] = useState(false);
+
+  // Yeni Davet Oluşturma Modalı
+  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
+  const [inviteSelectedGuestIds, setInviteSelectedGuestIds] = useState<string[]>([]);
+  const [inviteModalFilter, setInviteModalFilter] = useState<string>('ALL');
+
+  // Toast Bildirimleri
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-
-  // TEK GENEL "DAVET ET" SİHİRBAZI MODAL STATE'LERİ (SPLIT-VIEW)
-  const [isCampaignModalOpen, setIsCampaignModalOpen] = useState(false);
-  const [campaignTab, setCampaignTab] = useState<'SELECTION' | 'PREVIEW'>('PREVIEW');
-  const [campaignTargetGala, setCampaignTargetGala] = useState<HostGala | null>(null);
-  const [campaignDate, setCampaignDate] = useState('28 Kasım 2026');
-  const [campaignTimeOpen, setCampaignTimeOpen] = useState('19:00');
-  const [campaignTimeStart, setCampaignTimeStart] = useState('20:30');
-  const [campaignVenue, setCampaignVenue] = useState('Zorlu PSM');
-  const [campaignCapacity, setCampaignCapacity] = useState(700);
-  const [campaignPlusOneDefault, setCampaignPlusOneDefault] = useState(1);
-  const [selectedGuestIds, setSelectedGuestIds] = useState<string[]>([]);
-  const [modalGuestSearch, setModalGuestSearch] = useState('');
-  const [customInviteMessage, setCustomInviteMessage] = useState(
-    'Sizi Walt Disney Studios sunumuyla gerçekleşecek Moana 2 Türkiye Özel Galası’nda aramızda görmekten büyük onur duyarız.'
-  );
-
-  // Ayarlar Formu State'leri
-  const [currentPassword, setCurrentPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [newPasswordConfirm, setNewPasswordConfirm] = useState('');
-  const [emailSignature, setEmailSignature] = useState(
-    'Disney Studios Türkiye · PR & Basın İlişkileri Direktörlüğü'
-  );
-  const [vipNotificationEnabled, setVipNotificationEnabled] = useState(true);
-
-  // Davetiye Bağlantı Adresi (Base URL)
-  const [hostBaseUrl, setHostBaseUrl] = useState<string>('http://localhost:3000');
-
-  useEffect(() => {
-    try {
-      const savedBaseUrl = localStorage.getItem('gala_host_base_url_v17');
-      if (savedBaseUrl) {
-        setHostBaseUrl(savedBaseUrl);
-      } else if (typeof window !== 'undefined' && window.location.origin) {
-        setHostBaseUrl(window.location.origin);
-      }
-    } catch {}
-  }, []);
-
-  const handleUpdateBaseUrl = (url: string) => {
-    setHostBaseUrl(url);
-    try {
-      localStorage.setItem('gala_host_base_url_v17', url);
-    } catch {}
-  };
-
-  // Çift Yönlü LCV Yanıt Senkronizasyonu
-  const syncRsvpResponses = async () => {
-    let rsvpList: any[] = [];
-
-    // 1. Sunucudan /api/rsvp?all=true sorgula
-    try {
-      const res = await fetch('/api/rsvp?all=true');
-      if (res.ok) {
-        const json = await res.json();
-        if (json.success && Array.isArray(json.invitations)) {
-          rsvpList = json.invitations;
-        }
-      }
-    } catch {}
-
-    // 2. localStorage gala_host_rsvp_responses_v17 ile birleştir
-    try {
-      const localRaw = localStorage.getItem('gala_host_rsvp_responses_v17');
-      if (localRaw) {
-        const localList = JSON.parse(localRaw);
-        if (Array.isArray(localList)) {
-          for (const item of localList) {
-            const exists = rsvpList.find(
-              (r) => r.token === item.token || (item.guestId && r.guestId === item.guestId)
-            );
-            if (!exists) {
-              rsvpList.push({
-                ...item,
-                currentRsvpStatus: item.action,
-              });
-            } else if (
-              item.respondedAt &&
-              (!exists.respondedAt || new Date(item.respondedAt) > new Date(exists.respondedAt))
-            ) {
-              exists.currentRsvpStatus = item.action;
-              exists.plusOneRequested = item.plusOneRequested;
-              exists.plusOneNames = item.plusOneNames;
-              exists.guestNote = item.guestNote;
-            }
-          }
-        }
-      }
-    } catch {}
-
-    if (rsvpList.length === 0) return;
-
-    // 3. Davetliler tablosundaki durumları güncelle
-    setGuests((prev) => {
-      let changed = false;
-      const updated = prev.map((g) => {
-        const rsvp = rsvpList.find(
-          (r) =>
-            r.guestId === g.id ||
-            (g.email && r.email === g.email) ||
-            (r.guestName && `${g.firstName} ${g.lastName}`.trim() === r.guestName.trim()) ||
-            (g.id === 'go-disney-yigit-ali' && (r.email === 'yigitalicolakoglu22@gmail.com' || r.guestName?.includes('Yiğit Ali')))
-        );
-
-        if (!rsvp || !rsvp.currentRsvpStatus || rsvp.currentRsvpStatus === 'PENDING') {
-          return g;
-        }
-
-        const isConfirmed = rsvp.currentRsvpStatus === 'CONFIRMED' || rsvp.action === 'CONFIRMED';
-        const isDeclined = rsvp.currentRsvpStatus === 'DECLINED' || rsvp.action === 'DECLINED';
-
-        const newLcvStatus = isConfirmed ? 'CONFIRMED' : isDeclined ? 'DECLINED' : g.lcvStatus;
-        const newInvitationState = isConfirmed ? ('INVITED' as const) : isDeclined ? ('IDLE' as const) : g.invitationState;
-        const newPlusOneNames = rsvp.plusOneNames || g.plusOneNames;
-        const newTicketCode = rsvp.ticketCode || g.ticketCode;
-
-        if (
-          g.lcvStatus !== newLcvStatus ||
-          g.plusOneNames !== newPlusOneNames ||
-          g.invitationState !== newInvitationState
-        ) {
-          changed = true;
-          return {
-            ...g,
-            invitationState: newInvitationState,
-            lcvStatus: newLcvStatus,
-            plusOneNames: newPlusOneNames,
-            ticketCode: newTicketCode,
-            plusOneAllowed: rsvp.plusOneRequested ? rsvp.plusOneRequested : g.plusOneAllowed,
-          };
-        }
-        return g;
-      });
-
-      if (changed) {
-        try {
-          localStorage.setItem('gala_host_guests_v16', JSON.stringify(updated));
-          localStorage.setItem('gala_host_guests_v15', JSON.stringify(updated));
-        } catch {}
-        return updated;
-      }
-      return prev;
-    });
-
-    // 4. Gelen E-postalar & LCV Bildirimleri listesine otomatik yeni kayıt düş
-    setInboundMails((prev) => {
-      const nextMails = [...prev];
-      let mailsChanged = false;
-
-      for (const rsvp of rsvpList) {
-        if (!rsvp.currentRsvpStatus || rsvp.currentRsvpStatus === 'PENDING') continue;
-        const guestName = rsvp.guestName || rsvp.name || 'VIP Davetli';
-        const mailId = `rsvp-${rsvp.token || rsvp.guestId}`;
-
-        const existingMail = nextMails.find((m) => m.id === mailId);
-        if (!existingMail) {
-          const isConfirmed = rsvp.currentRsvpStatus === 'CONFIRMED' || rsvp.action === 'CONFIRMED';
-          const plusOneInfo = rsvp.plusOneNames
-            ? ` (+1: ${rsvp.plusOneNames})`
-            : rsvp.plusOneRequested > 0
-            ? ' (+1 Refakatçi)'
-            : '';
-
-          nextMails.unshift({
-            id: mailId,
-            fromName: guestName,
-            fromEmail: rsvp.email || `${guestName.toLowerCase().replace(/\s+/g, '.')}@protokol.local`,
-            subject: isConfirmed
-              ? `${guestName} — LCV Onaylandı (QR Bilet Hazır)${plusOneInfo}`
-              : `${guestName} — Katılamıyor (LCV Red)`,
-            preview: isConfirmed
-              ? `${guestName} galaya katılımını onayladı. QR Bilet: ${rsvp.ticketCode || '#DISNEY'}${rsvp.guestNote ? ` | Not: "${rsvp.guestNote}"` : ''}`
-              : `${guestName} maalesef galaya katılamayacağını bildirdi.`,
-            receivedAt: 'Yeni LCV',
-            aiClassification: isConfirmed ? 'CONFIRMED' : 'DECLINED',
-            status: 'PROCESSED',
-          });
-          mailsChanged = true;
-        }
-      }
-
-      return mailsChanged ? nextMails : prev;
-    });
-  };
-
-  useEffect(() => {
-    syncRsvpResponses();
-    const interval = setInterval(syncRsvpResponses, 5000);
-    return () => clearInterval(interval);
-  }, []);
-
-  // Yeni Konuk Ekleme Form State'leri
-  const [newGuestFirstName, setNewGuestFirstName] = useState('');
-  const [newGuestLastName, setNewGuestLastName] = useState('');
-  const [newGuestCompany, setNewGuestCompany] = useState('');
-  const [newGuestTitle, setNewGuestTitle] = useState('');
-  const [newGuestCategory, setNewGuestCategory] = useState<'PR' | 'PRESS'>('PR');
-  const [newGuestIgHandle, setNewGuestIgHandle] = useState('');
-  const [newGuestIgFollowers, setNewGuestIgFollowers] = useState('');
-  const [newGuestYtHandle, setNewGuestYtHandle] = useState('');
-  const [newGuestYtSubscribers, setNewGuestYtSubscribers] = useState('');
-
-  // Davetli Düzenleme Form State'leri
-  const [editingGuestId, setEditingGuestId] = useState<string | null>(null);
-  const [editFirstName, setEditFirstName] = useState('');
-  const [editLastName, setEditLastName] = useState('');
-  const [editCompany, setEditCompany] = useState('');
-  const [editTitle, setEditTitle] = useState('');
-  const [editCategory, setEditCategory] = useState<'PR' | 'PRESS'>('PR');
-  const [editIgHandle, setEditIgHandle] = useState('');
-  const [editIgFollowers, setEditIgFollowers] = useState('');
-  const [editYtHandle, setEditYtHandle] = useState('');
-  const [editYtSubscribers, setEditYtSubscribers] = useState('');
-  const [editAttended, setEditAttended] = useState(1);
-  const [editPosts, setEditPosts] = useState(1);
-  const [editInvitationState, setEditInvitationState] = useState<'INVITED' | 'WAITLIST' | 'IDLE'>('IDLE');
-  const [editNotes, setEditNotes] = useState('');
-
-  // Yan Çekmece Yönetici Notu
-  const [drawerNotes, setDrawerNotes] = useState('');
-
-  // CSV İçe Aktarma
-  const [csvRawText, setCsvRawText] = useState(
-    'Email,Ad,Soyad,Kurum,Telefon,Kategori,Instagram,YouTube,Katilim,Paylasim\neh***@oyuncu.com,Ece,Hançer,Persona Menajerlik,05331112233,PR,@ecehancer,Yok,3,3\nka***@medya.com,Kaan,Kural,Socrates Dergi,05423334455,PRESS,@kaankural,@socratesdergi,4,3'
-  );
-  const [csvImportMode, setCsvImportMode] = useState<'APPEND' | 'REPLACE'>('APPEND');
-
-  // Yeni Etkinlik / Arşiv State'leri
-  const [newEventTitle, setNewEventTitle] = useState('');
-  const [newEventMovie, setNewEventMovie] = useState('');
-  const [newEventVenue, setNewEventVenue] = useState('Zorlu PSM');
-  const [newEventCapacity, setNewEventCapacity] = useState(650);
-  const [newEventIsArchive, setNewEventIsArchive] = useState(false);
-  const [archiveAttendedCount, setArchiveAttendedCount] = useState(480);
-
-  // Etkinlik Düzenleme Modal State'leri
-  const [isEditEventModalOpen, setIsEditEventModalOpen] = useState(false);
-  const [editEventTitle, setEditEventTitle] = useState('');
-  const [editEventMovie, setEditEventMovie] = useState('');
-  const [editEventVenue, setEditEventVenue] = useState('Zorlu PSM');
-  const [editEventDateText, setEditEventDateText] = useState('28 Kasım 2026, 19:00');
-  const [editEventDoorsOpen, setEditEventDoorsOpen] = useState('19:00');
-  const [editEventStartsAt, setEditEventStartsAt] = useState('20:30');
-  const [editEventCapacity, setEditEventCapacity] = useState(700);
-  const [editEventConfirmedLcv, setEditEventConfirmedLcv] = useState(540);
-  const [editEventIsArchive, setEditEventIsArchive] = useState(false);
-  const [editEventArchiveDate, setEditEventArchiveDate] = useState('');
-
-  // Silme Onay Modal State'leri
-  const [deleteConfirmGuest, setDeleteConfirmGuest] = useState<HostGuest | null>(null);
-  const [isClearAllConfirmOpen, setIsClearAllConfirmOpen] = useState(false);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 3500);
+    setTimeout(() => setToastMessage(null), 3800);
   };
 
-  // Kampanya Sihirbazını Aç (Üst Bardan Tek Genel "Davet Et" Giriş Noktası)
-  const openCampaignModal = (gala: HostGala, initialGuestIds?: string[]) => {
-    setCampaignTargetGala(gala);
-    setCampaignDate(gala.eventDateText.split(',')[0] || '28 Kasım 2026');
-    setCampaignTimeOpen(gala.doorsOpenAt);
-    setCampaignTimeStart(gala.startsAt);
-    setCampaignVenue(gala.venue);
-    setCampaignCapacity(gala.capacity);
-    setCampaignTab('PREVIEW');
+  // Tema Değişimi
+  const toggleTheme = () => {
+    const next = theme === 'dark' ? 'light' : 'dark';
+    setTheme(next);
+    showToast(`${next === 'dark' ? 'Koyu' : 'Açık'} temaya geçildi.`);
+  };
 
-    if (initialGuestIds && initialGuestIds.length > 0) {
-      setSelectedGuestIds(initialGuestIds);
-    } else {
-      const millionPlus = guests
+  // Filtrelenmiş Misafirler
+  const filteredGuests = useMemo(() => {
+    return guests.filter((guest) => {
+      // Sekme bazlı filtre: Eğer 'pr' sekmesindeyse sadece PR, 'press'teyse sadece PRESS
+      if (activeTab === 'pr' && guest.category !== 'PR') return false;
+      if (activeTab === 'press' && guest.category !== 'PRESS') return false;
+
+      // Kategori filtresi
+      if (selectedCategoryFilter !== 'ALL' && guest.category !== selectedCategoryFilter) return false;
+
+      // Dönüşüm filtresi
+      if (selectedConversionFilter === 'HIGH' && guest.prConversionRate < 75) return false;
+      if (selectedConversionFilter === 'LOW' && (guest.prConversionRate >= 75 || guest.prConversionRate === 0)) return false;
+      if (selectedConversionFilter === 'GHOST' && guest.prConversionRate !== 0) return false;
+      if (selectedConversionFilter === 'INVITED' && guest.invitationState !== 'INVITED') return false;
+
+      // Arama filtresi
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        const fullName = `${guest.firstName} ${guest.lastName}`.toLowerCase();
+        const company = guest.company.toLowerCase();
+        const ig = guest.instagram?.handle.toLowerCase() || '';
+        const yt = guest.youtube?.handle.toLowerCase() || '';
+        return fullName.includes(q) || company.includes(q) || ig.includes(q) || yt.includes(q);
+      }
+      return true;
+    });
+  }, [guests, activeTab, selectedCategoryFilter, selectedConversionFilter, searchQuery]);
+
+  // Sayısal İstatistikler
+  const stats = useMemo(() => {
+    const totalPr = guests.filter((g) => g.category === 'PR').length;
+    const totalPress = guests.filter((g) => g.category === 'PRESS').length;
+    const confirmedCount = guests.filter((g) => g.lcvStatus === 'CONFIRMED').length;
+    const totalReach = guests.reduce((acc, g) => {
+      const ig = g.instagram?.count || 0;
+      const yt = g.youtube?.count || 0;
+      return acc + ig + yt;
+    }, 0);
+    return {
+      totalPr,
+      totalPress,
+      confirmedCount,
+      totalReachText: `${(totalReach / 1000000).toFixed(1)}M+`,
+    };
+  }, [guests]);
+
+  // Toplu Davet Fonksiyonları
+  const handleBulkSelectRule = (rule: 'ALL' | 'OVER_1M' | 'PRESS' | 'CLEAR') => {
+    if (rule === 'CLEAR') {
+      setInviteSelectedGuestIds([]);
+      return;
+    }
+    if (rule === 'ALL') {
+      setInviteSelectedGuestIds(guests.map((g) => g.id));
+      return;
+    }
+    if (rule === 'OVER_1M') {
+      const matched = guests
         .filter((g) => (g.instagram?.count || 0) >= 1000000 || (g.youtube?.count || 0) >= 1000000)
         .map((g) => g.id);
-      const withYigit = ['go-disney-yigit-ali', ...millionPlus.filter((id) => id !== 'go-disney-yigit-ali')];
-      setSelectedGuestIds(withYigit.length > 0 ? withYigit : guests.slice(0, 3).map((g) => g.id));
+      setInviteSelectedGuestIds(matched);
+      return;
     }
-    setIsCampaignModalOpen(true);
+    if (rule === 'PRESS') {
+      const matched = guests.filter((g) => g.category === 'PRESS').map((g) => g.id);
+      setInviteSelectedGuestIds(matched);
+      return;
+    }
   };
 
-  // Hızlı Seçim Yardımcıları
-  const handleSelect1MPlus = () => {
-    const millionPlus = guests
-      .filter((g) => (g.instagram?.count || 0) >= 1000000 || (g.youtube?.count || 0) >= 1000000)
-      .map((g) => g.id);
-    setSelectedGuestIds(millionPlus);
-    showToast(`1M+ erişime sahip ${millionPlus.length} davetli seçildi.`);
-  };
-
-  const handleSelectPress = () => {
-    const pressIds = guests.filter((g) => g.category === 'PRESS').map((g) => g.id);
-    setSelectedGuestIds(pressIds);
-    showToast(`${pressIds.length} Basın mensubu seçildi.`);
-  };
-
-  const handleSelectHighPr = () => {
-    const highPrIds = guests.filter((g) => g.prConversionRate >= 75.0).map((g) => g.id);
-    setSelectedGuestIds(highPrIds);
-    showToast(`%75+ PR Dönüşümü olan ${highPrIds.length} davetli seçildi.`);
-  };
-
-  const handleSelectAll = () => {
-    setSelectedGuestIds(guests.map((g) => g.id));
-    showToast(`Havuzdaki tüm ${guests.length} davetli seçildi.`);
-  };
-
-  const handleClearSelection = () => {
-    setSelectedGuestIds([]);
-  };
-
-  const toggleSelectGuest = (id: string) => {
-    setSelectedGuestIds((prev) =>
+  const toggleInviteGuest = (id: string) => {
+    setInviteSelectedGuestIds((prev) =>
       prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
     );
   };
 
-  // Toplu Davetiye Gönderme İşlemi (Seçim Penceresinin Ana Aksiyonu)
-  const handleSendBatchCampaign = async () => {
-    if (selectedGuestIds.length === 0) {
-      showToast('Lütfen davet göndermek için en az bir konuk seçiniz.');
+  const handleSendBulkInvites = () => {
+    if (inviteSelectedGuestIds.length === 0) {
+      showToast('Lütfen en az bir davetli seçin.');
       return;
     }
-
-    setGuests((prev) => {
-      const updated = prev.map((g) =>
-        selectedGuestIds.includes(g.id)
-          ? { ...g, invitationState: 'INVITED' as const, plusOneAllowed: campaignPlusOneDefault }
+    setGuests((prev) =>
+      prev.map((g) =>
+        inviteSelectedGuestIds.includes(g.id)
+          ? { ...g, invitationState: 'INVITED', lcvStatus: g.lcvStatus || 'PENDING' }
           : g
-      );
-      try {
-        localStorage.setItem('gala_host_guests_v16', JSON.stringify(updated));
-        localStorage.setItem('gala_host_guests_v15', JSON.stringify(updated));
-      } catch {}
-      return updated;
-    });
-
-    if (campaignTargetGala) {
-      setGalas((prev) => {
-        const next = prev.map((g) =>
-          g.id === campaignTargetGala.id
-            ? {
-                ...g,
-                venue: campaignVenue,
-                doorsOpenAt: campaignTimeOpen,
-                startsAt: campaignTimeStart,
-                capacity: campaignCapacity,
-                eventDateText: campaignDate,
-                confirmedLcv: Math.min(campaignCapacity, g.confirmedLcv + selectedGuestIds.length),
-                occupancyRate: Math.min(
-                  100,
-                  Math.round(
-                    (Math.min(campaignCapacity, g.confirmedLcv + selectedGuestIds.length) /
-                      Math.max(1, campaignCapacity)) *
-                      1000
-                  ) / 10
-                ),
-              }
-            : g
-        );
-        try {
-          localStorage.setItem('gala_host_events_v16', JSON.stringify(next));
-        } catch {}
-        return next;
-      });
-    }
-
-    setIsCampaignModalOpen(false);
-
-    const selectedGuests = guests.filter((g) => selectedGuestIds.includes(g.id));
-    const yigitAli = selectedGuests.find(
-      (g) => g.id === 'go-disney-yigit-ali' || g.email === 'yigitalicolakoglu22@gmail.com'
+      )
     );
-
-    try {
-      const res = await fetch('/api/send-invite', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          guestIds: selectedGuestIds,
-          guests: selectedGuests.map((g) => ({
-            id: g.id,
-            firstName: g.firstName,
-            lastName: g.lastName,
-            email: g.email || (g.id === 'go-disney-yigit-ali' ? 'yigitalicolakoglu22@gmail.com' : g.maskedEmail),
-            company: g.company,
-            title: g.title,
-            category: g.category,
-          })),
-          gala: campaignTargetGala,
-          baseUrl: hostBaseUrl || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000'),
-          customMessage: customInviteMessage,
-          emailSignature,
-          doorsOpenAt: campaignTimeOpen,
-          startsAt: campaignTimeStart,
-          eventDateText: campaignDate,
-          venue: campaignVenue,
-          plusOneAllowed: campaignPlusOneDefault,
-        }),
-      });
-      const data = await res.json();
-      if (yigitAli) {
-        const yigitRes = data?.results?.find(
-          (r: any) => r.guestId === 'go-disney-yigit-ali' || r.email === 'yigitalicolakoglu22@gmail.com'
-        );
-        const rsvpLink = yigitRes?.rsvpLink || `/rsvp/gst-vip-yigit-ali-${Date.now().toString(36)}`;
-        showToast(`Yiğit Ali Çolakoğlu (yigitalicolakoglu22@gmail.com) adresine gala davetiyesi gönderildi. LCV Linki: ${rsvpLink}`);
-      } else {
-        showToast(`${selectedGuestIds.length} davetlinin kayıtlı e-postasına kişisel LCV davetiyesi gönderildi.`);
-      }
-    } catch {
-      if (yigitAli) {
-        showToast(`Yiğit Ali Çolakoğlu (yigitalicolakoglu22@gmail.com) adresine gala davetiyesi gönderildi. LCV Linki: /rsvp/gst-vip-yigit-ali-preview`);
-      } else {
-        showToast(`${selectedGuestIds.length} davetlinin kayıtlı e-postasına kişisel LCV davetiyesi gönderildi.`);
-      }
-    }
+    showToast(`${inviteSelectedGuestIds.length} kişiye kişiselleştirilmiş gala davetiyesi gönderildi! ✉️`);
+    setIsInviteModalOpen(false);
+    setInviteSelectedGuestIds([]);
   };
-
-  // Etkinliği / Arşivi Düzenleme Modal Başlatıcı
-  const handleOpenEditEvent = () => {
-    if (!selectedGala) return;
-    setEditEventTitle(selectedGala.title);
-    setEditEventMovie(selectedGala.movieTitle);
-    setEditEventVenue(selectedGala.venue);
-    setEditEventDateText(selectedGala.eventDateText);
-    setEditEventDoorsOpen(selectedGala.doorsOpenAt);
-    setEditEventStartsAt(selectedGala.startsAt);
-    setEditEventCapacity(selectedGala.capacity);
-    setEditEventConfirmedLcv(selectedGala.confirmedLcv);
-    setEditEventIsArchive(selectedGala.isHistoricalArchive);
-    setEditEventArchiveDate(selectedGala.archiveDate || '');
-    setIsEditEventModalOpen(true);
-  };
-
-  // Etkinlik Değişikliklerini Kaydetme Motoru
-  const handleUpdateEvent = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedGala || !editEventTitle || !editEventMovie) {
-      showToast('Lütfen etkinlik başlığı ve film adını doldurunuz.');
-      return;
-    }
-
-    const capacity = Math.max(1, editEventCapacity);
-    const confirmed = Math.max(0, editEventConfirmedLcv);
-    const occupancyRate = Math.min(100, Math.round((confirmed / capacity) * 1000) / 10);
-
-    const updatedGalas = galas.map((g) => {
-      if (g.id === selectedGala.id) {
-        return {
-          ...g,
-          title: editEventTitle,
-          movieTitle: editEventMovie,
-          venue: editEventVenue,
-          eventDateText: editEventDateText,
-          doorsOpenAt: editEventDoorsOpen,
-          startsAt: editEventStartsAt,
-          capacity,
-          confirmedLcv: confirmed,
-          occupancyRate,
-          isHistoricalArchive: editEventIsArchive,
-          archiveDate: editEventIsArchive ? (editEventArchiveDate || editEventDateText) : undefined,
-        };
-      }
-      return g;
-    });
-
-    setGalas(updatedGalas);
-    try {
-      localStorage.setItem('gala_host_events_v16', JSON.stringify(updatedGalas));
-    } catch {}
-    setIsEditEventModalOpen(false);
-    showToast(`${editEventTitle} bilgileri başarıyla güncellendi.`);
-  };
-
-  // Gelen Mail Aksiyonu
-  const handleApproveInboundMail = (
-    mailId: string,
-    action: 'APPROVE_VIP' | 'APPROVE_PRESS_ACCREDITATION' | 'MOVE_TO_WAITLIST'
-  ) => {
-    setInboundMails((prev) =>
-      prev.map((m) => (m.id === mailId ? { ...m, status: 'PROCESSED' } : m))
-    );
-
-    if (mailId === 'mail-02') {
-      setGuests((prev) => {
-        const updated = prev.map((g) => (g.id === 'go-disney-omur-gedik' ? { ...g, invitationState: 'INVITED' as const } : g));
-        try { localStorage.setItem('gala_host_guests_v15', JSON.stringify(updated)); } catch {}
-        return updated;
-      });
-      showToast('Ömür Gedik için yanıt onaylandı. Basın akreditasyonu ve davetiye iletildi.');
-    } else if (mailId === 'mail-01') {
-      setGuests((prev) => {
-        const updated = prev.map((g) => (g.id === 'go-disney-danla' ? { ...g, plusOneAllowed: 1, invitationState: 'INVITED' as const } : g));
-        try { localStorage.setItem('gala_host_guests_v15', JSON.stringify(updated)); } catch {}
-        return updated;
-      });
-      showToast('Danla Bilic için +1 refakatçi LCV onayı işlendi.');
-    } else if (mailId === 'mail-03') {
-      setGuests((prev) => {
-        const updated = prev.map((g) => (g.id === 'go-disney-kivanc' ? { ...g, invitationState: 'INVITED' as const } : g));
-        try { localStorage.setItem('gala_host_guests_v15', JSON.stringify(updated)); } catch {}
-        return updated;
-      });
-      showToast('Kıvanç Tatlıtuğ için seans gecikme notu kapı personeline iletildi ve davet onaylandı.');
-    } else {
-      showToast('Yanıt başarıyla onaylandı.');
-    }
-  };
-
-  // Tek Tıkla Paylaşım İşleme ()
-  const handleIncrementPost = (guestId: string) => {
-    setGuests((prev) => {
-      const updated = prev.map((g) => {
-        if (g.id === guestId) {
-          const newPosts = g.totalPostsForHost + 1;
-          const attended = Math.max(1, g.totalAttendedForHost);
-          const newRate = Math.min(100, Math.round((newPosts / attended) * 1000) / 10);
-          let newTier: HostGuest['conversionTier'] = 'MODERATE_CONTRIBUTOR';
-          if (newRate >= 75.0) newTier = 'HIGH_IMPACT_CREATOR';
-          else if (newRate >= 40.0) newTier = 'MODERATE_CONTRIBUTOR';
-          else newTier = 'LOW_PR_CONVERSION';
-
-          showToast(`${g.firstName} ${g.lastName} için yeni paylaşım işlendi (Güncel Dönüşüm: %${newRate}).`);
-          return {
-            ...g,
-            totalPostsForHost: newPosts,
-            prConversionRate: newRate,
-            conversionTier: newTier,
-          };
-        }
-        return g;
-      });
-      try { localStorage.setItem('gala_host_guests_v15', JSON.stringify(updated)); } catch {}
-      return updated;
-    });
-  };
-
-  // Kapı Güvenlik Listesi İndirme ()
-  const handleExportDoorList = () => {
-    const invitedGuests = guests.filter((g) => g.invitationState === 'INVITED');
-    const csvRows = [
-      'Ad,Soyad,Kurum,Kategori,LCV Durumu,Kontenjan (+1),Guvenlik Dogrulama',
-      ...invitedGuests.map(
-        (g) =>
-          `"${g.firstName}","${g.lastName}","${g.company}","${g.category}","ONAYLANDI","+${g.plusOneAllowed}","QR-${g.id.slice(-6).toUpperCase()}"`
-      ),
-    ];
-    const blob = new Blob([csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', `Kapi-Guvenlik-Listesi-${selectedGala.movieTitle.replace(/\s+/g, '-')}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    showToast(`Kapı listesi (${invitedGuests.length} davetli) indirildi.`);
-  };
-
-  // Şifre Değiştirme ()
-  const handleChangePassword = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newPassword || newPassword.length < 8) {
-      showToast('Yeni şifre en az 8 karakter olmalıdır.');
-      return;
-    }
-    if (newPassword !== newPasswordConfirm) {
-      showToast('Yeni şifreler birbiriyle eşleşmiyor.');
-      return;
-    }
-    setCurrentPassword('');
-    setNewPassword('');
-    setNewPasswordConfirm('');
-    setIsSettingsModalOpen(false);
-    showToast('Hesap şifresi ve kurumsal tercihler güncellendi.');
-  };
-
-  // Takipçi Sayılarını Senkronize Etme ve Formatlama Motoru
-  const handleSyncFollowers = () => {
-    setGuests((prev) => {
-      const updated = prev.map((g) => {
-        let updatedIg = g.instagram;
-        if (updatedIg) {
-          let count = updatedIg.count;
-          if (!count || count <= 0) {
-            count = parseFollowerCount(updatedIg.followersText);
-          }
-          const followersText = formatFollowerCount(count, 'Takipçi');
-          updatedIg = { ...updatedIg, count, followersText };
-        }
-
-        let updatedYt = g.youtube;
-        if (updatedYt) {
-          let count = updatedYt.count;
-          if (!count || count <= 0) {
-            count = parseFollowerCount(updatedYt.followersText);
-          }
-          const followersText = formatFollowerCount(count, 'Abone');
-          updatedYt = { ...updatedYt, count, followersText };
-        }
-
-        return {
-          ...g,
-          instagram: updatedIg,
-          youtube: updatedYt,
-        };
-      });
-
-      try {
-        localStorage.setItem('gala_host_guests_v15', JSON.stringify(updated));
-      } catch {}
-
-      return updated;
-    });
-
-    showToast('Tüm davetlilerin Instagram ve YouTube takipçi sayıları senkronize edildi.');
-  };
-
-  // Tekil Kişi Ekleme (Doğrudan CRUD)
-  const handleAddSingleGuest = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newGuestFirstName || !newGuestLastName) {
-      showToast('Lütfen Ad ve Soyad alanlarını doldurunuz.');
-      return;
-    }
-
-    const igCount = newGuestIgFollowers ? parseFollowerCount(newGuestIgFollowers) : 0;
-    const ytCount = newGuestYtSubscribers ? parseFollowerCount(newGuestYtSubscribers) : 0;
-
-    const igFormatted = igCount > 0 ? formatFollowerCount(igCount, 'Takipçi') : newGuestIgFollowers || '100K Takipçi';
-    const ytFormatted = ytCount > 0 ? formatFollowerCount(ytCount, 'Abone') : newGuestYtSubscribers || '50K Abone';
-
-    const newGuest: HostGuest = {
-      id: `go-disney-${Date.now()}`,
-      guestId: `gst-manual-${Date.now()}`,
-      firstName: newGuestFirstName,
-      lastName: newGuestLastName,
-      maskedEmail: `${newGuestFirstName.slice(0, 2).toLowerCase()}***@disney.local`,
-      maskedPhone: '+90530*****00',
-      company: newGuestCompany || 'Bağımsız',
-      title: newGuestTitle || (newGuestCategory === 'PR' ? 'İçerik Üreticisi' : 'Basın Mensubu'),
-      category: newGuestCategory,
-      hostCustomTags: [newGuestCategory, 'MANUAL_ADDED'],
-      hostLoyaltyScore: 100.0,
-      instagram: newGuestIgHandle
-        ? {
-            handle: newGuestIgHandle.startsWith('@') ? newGuestIgHandle : `@${newGuestIgHandle}`,
-            followersText: igFormatted,
-            count: igCount || 100000,
-          }
-        : null,
-      youtube: newGuestYtHandle
-        ? {
-            handle: newGuestYtHandle.startsWith('@') ? newGuestYtHandle : `@${newGuestYtHandle}`,
-            followersText: ytFormatted,
-            count: ytCount || 50000,
-          }
-        : null,
-      totalInvitedByHost: 1,
-      totalAttendedForHost: 1,
-      totalPostsForHost: 1,
-      prConversionRate: 100.0,
-      conversionTier: 'HIGH_IMPACT_CREATOR',
-      hostNotes: 'Disney Studios Türkiye havuzuna manuel eklendi.',
-      invitationState: 'IDLE',
-      plusOneAllowed: 1,
-    };
-
-    setGuests((prev) => {
-      const next = [newGuest, ...prev];
-      try {
-        localStorage.setItem('gala_host_guests_v15', JSON.stringify(next));
-      } catch {}
-      return next;
-    });
-
-    setIsAddGuestModalOpen(false);
-    setNewGuestFirstName('');
-    setNewGuestLastName('');
-    setNewGuestCompany('');
-    setNewGuestTitle('');
-    setNewGuestIgHandle('');
-    setNewGuestIgFollowers('');
-    setNewGuestYtHandle('');
-    setNewGuestYtSubscribers('');
-    showToast(`${newGuest.firstName} ${newGuest.lastName} davetli havuzuna eklendi.`);
-  };
-
-  // Tam Bilgili Davetli Düzenleme Formu Açma
-  const handleOpenEditGuest = (guest: HostGuest) => {
-    setEditingGuestId(guest.id);
-    setEditFirstName(guest.firstName);
-    setEditLastName(guest.lastName);
-    setEditCompany(guest.company);
-    setEditTitle(guest.title);
-    setEditCategory(guest.category);
-    setEditIgHandle(guest.instagram?.handle || '');
-    setEditIgFollowers(guest.instagram?.followersText || '');
-    setEditYtHandle(guest.youtube?.handle || '');
-    setEditYtSubscribers(guest.youtube?.followersText || '');
-    setEditAttended(guest.totalAttendedForHost || 1);
-    setEditPosts(guest.totalPostsForHost || 0);
-    setEditInvitationState(guest.invitationState);
-    setEditNotes(guest.hostNotes || '');
-    setIsEditGuestModalOpen(true);
-  };
-
-  // Davetliyi Güncelleme (Kaydet)
-  const handleUpdateGuest = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingGuestId || !editFirstName || !editLastName) {
-      showToast('Lütfen Ad ve Soyad alanlarını doldurunuz.');
-      return;
-    }
-
-    const attended = Math.max(1, editAttended);
-    const posts = Math.max(0, editPosts);
-    const rate = Math.min(100, Math.round((posts / attended) * 1000) / 10);
-    let tier: HostGuest['conversionTier'] = 'MODERATE_CONTRIBUTOR';
-    if (rate >= 75.0) tier = 'HIGH_IMPACT_CREATOR';
-    else if (rate >= 40.0) tier = 'MODERATE_CONTRIBUTOR';
-    else if (rate > 0) tier = 'LOW_PR_CONVERSION';
-    else tier = 'GHOST_ATTENDEE';
-
-    const igCount = editIgFollowers ? parseFollowerCount(editIgFollowers) : 0;
-    const ytCount = editYtSubscribers ? parseFollowerCount(editYtSubscribers) : 0;
-
-    const igFormatted = igCount > 0 ? formatFollowerCount(igCount, 'Takipçi') : editIgFollowers || '100K Takipçi';
-    const ytFormatted = ytCount > 0 ? formatFollowerCount(ytCount, 'Abone') : editYtSubscribers || '50K Abone';
-
-    setGuests((prev) => {
-      const updated = prev.map((g) => {
-        if (g.id === editingGuestId) {
-          return {
-            ...g,
-            firstName: editFirstName,
-            lastName: editLastName,
-            company: editCompany || 'Bağımsız',
-            title: editTitle || (editCategory === 'PR' ? 'İçerik Üreticisi' : 'Basın Mensubu'),
-            category: editCategory,
-            instagram: editIgHandle
-              ? {
-                  handle: editIgHandle.startsWith('@') ? editIgHandle : `@${editIgHandle}`,
-                  followersText: igFormatted,
-                  count: igCount || 100000,
-                }
-              : null,
-            youtube: editYtHandle
-              ? {
-                  handle: editYtHandle.startsWith('@') ? editYtHandle : `@${editYtHandle}`,
-                  followersText: ytFormatted,
-                  count: ytCount || 50000,
-                }
-              : null,
-            totalAttendedForHost: attended,
-            totalPostsForHost: posts,
-            prConversionRate: rate,
-            conversionTier: tier,
-            invitationState: editInvitationState,
-            hostNotes: editNotes,
-          };
-        }
-        return g;
-      });
-
-      try {
-        localStorage.setItem('gala_host_guests_v15', JSON.stringify(updated));
-      } catch {}
-
-      return updated;
-    });
-
-    setIsEditGuestModalOpen(false);
-    if (selectedGuestForDrawer && selectedGuestForDrawer.id === editingGuestId) {
-      setSelectedGuestForDrawer((prev) =>
-        prev
-          ? {
-              ...prev,
-              firstName: editFirstName,
-              lastName: editLastName,
-              company: editCompany,
-              title: editTitle,
-              category: editCategory,
-              hostNotes: editNotes,
-              invitationState: editInvitationState,
-            }
-          : null
-      );
-    }
-    showToast(`${editFirstName} ${editLastName} bilgileri başarıyla güncellendi.`);
-  };
-
-  // Çekmece Not Kaydetme ()
-  const handleSaveGuestNotes = (guestId: string) => {
-    setGuests((prev) => {
-      const updated = prev.map((g) => (g.id === guestId ? { ...g, hostNotes: drawerNotes } : g));
-      try { localStorage.setItem('gala_host_guests_v15', JSON.stringify(updated)); } catch {}
-      return updated;
-    });
-    if (selectedGuestForDrawer && selectedGuestForDrawer.id === guestId) {
-      setSelectedGuestForDrawer({ ...selectedGuestForDrawer, hostNotes: drawerNotes });
-    }
-    showToast('Not güncellendi.');
-  };
-
-  // Davetli Silme (Onay Modalı Başlatıcı)
-  const handleDeleteGuest = (guestId: string) => {
-    const target = guests.find((g) => g.id === guestId);
-    if (target) {
-      setDeleteConfirmGuest(target);
-    }
-  };
-
-  // Davetli Silmeyi Onaylama (confirmDeleteGuest)
-  const confirmDeleteGuest = () => {
-    if (!deleteConfirmGuest) return;
-    const target = deleteConfirmGuest;
-    setGuests((prev) => {
-      const updated = prev.filter((g) => g.id !== target.id);
-      try {
-        localStorage.setItem('gala_host_guests_v16', JSON.stringify(updated));
-        localStorage.setItem('gala_host_guests_v15', JSON.stringify(updated));
-      } catch {}
-      return updated;
-    });
-    setDeleteConfirmGuest(null);
-    setSelectedGuestForDrawer(null);
-    setIsEditGuestModalOpen(false);
-    showToast(`${target.firstName} ${target.lastName} havuzdan silindi.`);
-  };
-
-  // Varsayılan Gerçek Listeye Sıfırlama
-  const handleResetToDefaultGuests = () => {
-    setGuests(DEFAULT_HOST_GUESTS);
-    try {
-      localStorage.setItem('gala_host_guests_v16', JSON.stringify(DEFAULT_HOST_GUESTS));
-      localStorage.setItem('gala_host_guests_v15', JSON.stringify(DEFAULT_HOST_GUESTS));
-    } catch {}
-    showToast('Davetli havuzu varsayılan gerçek verisetine sıfırlandı.');
-  };
-
-  // Tüm Listeyi Temizleme
-  const handleClearAllGuests = () => {
-    setGuests([]);
-    try {
-      localStorage.setItem('gala_host_guests_v16', JSON.stringify([]));
-      localStorage.setItem('gala_host_guests_v15', JSON.stringify([]));
-    } catch {}
-    setIsClearAllConfirmOpen(false);
-    showToast('Tüm davetli havuzu temizlendi.');
-  };
-
-  // Filtrelenmiş Davetliler (Tablo)
-  const filteredGuests = useMemo(() => {
-    return guests.filter((g) => {
-      if (activeNav === 'PR' && g.category !== 'PR') return false;
-      if (activeNav === 'PRESS' && g.category !== 'PRESS') return false;
-
-      const fullName = `${g.firstName} ${g.lastName}`.toLowerCase();
-      const company = (g.company || '').toLowerCase();
-      const igHandle = (g.instagram?.handle || '').toLowerCase();
-      const ytHandle = (g.youtube?.handle || '').toLowerCase();
-      const q = searchQuery.toLowerCase();
-
-      const matchesSearch =
-        fullName.includes(q) ||
-        company.includes(q) ||
-        igHandle.includes(q) ||
-        ytHandle.includes(q);
-
-      if (!matchesSearch) return false;
-
-      if (activeFilter === 'HIGH_PR') return g.prConversionRate >= 75.0;
-      if (activeFilter === 'LOW_PR') return g.prConversionRate > 0 && g.prConversionRate < 40.0;
-      if (activeFilter === 'GHOST') return g.prConversionRate === 0.0 && g.totalAttendedForHost > 0;
-      if (activeFilter === 'INVITED_ONLY') return g.invitationState === 'INVITED';
-      if (activeFilter === 'WAITLIST_ONLY') return g.invitationState === 'WAITLIST';
-
-      return true;
-    });
-  }, [guests, activeNav, activeFilter, searchQuery]);
-
-  // Davet İptal / Yedek Liste / Durum Değiştirme
-  const handleToggleState = (guestId: string, newState: 'INVITED' | 'WAITLIST' | 'IDLE') => {
-    const target = guests.find((g) => g.id === guestId);
-    if (!target) return;
-
-    setGuests((prev) => {
-      const updated = prev.map((g) => (g.id === guestId ? { ...g, invitationState: newState } : g));
-      try { localStorage.setItem('gala_host_guests_v15', JSON.stringify(updated)); } catch {}
-      return updated;
-    });
-
-    if (newState === 'IDLE') {
-      showToast(`${target.firstName} ${target.lastName} davet listesinden çıkarıldı.`);
-    } else if (newState === 'WAITLIST') {
-      showToast(`${target.firstName} ${target.lastName} yedek listeye alındı.`);
-    } else if (newState === 'INVITED') {
-      showToast(`${target.firstName} ${target.lastName} için davet onaylandı.`);
-    }
-  };
-
-  // EXCEL / TSV / CSV GELİŞMİŞ İÇE AKTARMA MOTORU
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const text = event.target?.result as string;
-      if (text) {
-        setCsvRawText(text);
-        showToast(`${file.name} başarıyla yüklendi.`);
-      }
-    };
-    reader.onerror = () => {
-      showToast('Dosya okunamadı.');
-    };
-    reader.readAsText(file, 'utf-8');
-  };
-
-  const handleImportCsv = () => {
-    if (!csvRawText || !csvRawText.trim()) {
-      showToast('Lütfen CSV veya Excel formatında geçerli veri giriniz.');
-      return;
-    }
-
-    const lines = csvRawText.split('\n')
-      .map((l) => l.trim())
-      .filter((l) => l.length > 0);
-
-    if (lines.length === 0) {
-      showToast('İçe aktarılacak veri bulunamadı.');
-      return;
-    }
-
-    // Delimiter tespiti: tab (\t), noktalı virgül (;), virgül (,)
-    const firstLine = lines[0];
-    let delimiter = ',';
-    if (firstLine.includes('\t')) delimiter = '\t';
-    else if (firstLine.includes(';')) delimiter = ';';
-
-    const hasHeader =
-      firstLine.toLowerCase().includes('ad') ||
-      firstLine.toLowerCase().includes('email') ||
-      firstLine.toLowerCase().includes('isim') ||
-      firstLine.toLowerCase().includes('kurum');
-
-    const dataLines = hasHeader && lines.length > 1 ? lines.slice(1) : lines;
-    const newParsedGuests: HostGuest[] = [];
-
-    dataLines.forEach((line, index) => {
-      const parts = line.split(delimiter).map((p) => p.replace(/^"|"$/g, '').trim());
-      if (parts.length < 2) return;
-
-      let email = '';
-      let firstName = '';
-      let lastName = '';
-      let company = 'Bağımsız';
-      let phone = '';
-      let categoryRaw = 'PR';
-      let igRaw = '';
-      let ytRaw = '';
-      let attended = 1;
-      let posts = 1;
-
-      if (parts.length >= 9) {
-        // Tam format: Email, Ad, Soyad, Kurum, Telefon, Kategori, Instagram, YouTube, Katilim, Paylasim
-        email = parts[0] || '';
-        firstName = parts[1] || '';
-        lastName = parts[2] || '';
-        company = parts[3] || 'Bağımsız';
-        phone = parts[4] || '';
-        categoryRaw = (parts[5] || 'PR').toUpperCase();
-        igRaw = parts[6] || '';
-        ytRaw = parts[7] || '';
-        attended = Number(parts[8]) || 1;
-        posts = Number(parts[9]) || 0;
-      } else if (parts.length >= 4) {
-        // Esnek format: Ad, Soyad, Kurum, Kategori/Sosyal
-        firstName = parts[0] || '';
-        lastName = parts[1] || '';
-        company = parts[2] || 'Bağımsız';
-        categoryRaw = (parts[3] || 'PR').toUpperCase();
-        if (parts[4]) igRaw = parts[4];
-        if (parts[5]) ytRaw = parts[5];
-      } else if (parts.length >= 2) {
-        // Basit format: Ad, Soyad
-        firstName = parts[0] || '';
-        lastName = parts[1] || '';
-      }
-
-      if (!firstName) return;
-
-      const category: 'PR' | 'PRESS' =
-        categoryRaw.includes('PRESS') || categoryRaw.includes('BASIN') ? 'PRESS' : 'PR';
-
-      const igHandle = igRaw && igRaw.toLowerCase() !== 'yok' && igRaw !== '-' ? igRaw : '';
-      const ytHandle = ytRaw && ytRaw.toLowerCase() !== 'yok' && ytRaw !== '-' ? ytRaw : '';
-
-      const rate = attended > 0 ? Math.min(100, Math.round((posts / attended) * 1000) / 10) : 0;
-      let tier: HostGuest['conversionTier'] = 'MODERATE_CONTRIBUTOR';
-      if (rate >= 75.0) tier = 'HIGH_IMPACT_CREATOR';
-      else if (rate >= 40.0) tier = 'MODERATE_CONTRIBUTOR';
-      else if (rate > 0) tier = 'LOW_PR_CONVERSION';
-      else tier = 'GHOST_ATTENDEE';
-
-      const maskedEmail = email.includes('@')
-        ? `${email.slice(0, 2)}***@${email.split('@')[1]}`
-        : `${firstName.slice(0, 2).toLowerCase()}***@disney.local`;
-
-      const maskedPhone =
-        phone.length >= 7 ? `${phone.slice(0, 4)}*****${phone.slice(-2)}` : '+90530*****00';
-
-      const igCount = igHandle ? parseFollowerCount(igHandle) || 150000 : 0;
-      const ytCount = ytHandle ? parseFollowerCount(ytHandle) || 50000 : 0;
-
-      const newGuest: HostGuest = {
-        id: `go-disney-csv-${Date.now()}-${index}`,
-        guestId: `gst-csv-${Date.now()}-${index}`,
-        firstName,
-        lastName,
-        maskedEmail,
-        maskedPhone,
-        company,
-        title: category === 'PR' ? 'İçerik Üreticisi' : 'Basın Mensubu',
-        category,
-        hostCustomTags: [category, 'CSV_IMPORT'],
-        hostLoyaltyScore: Math.round(75 + Math.random() * 24),
-        instagram: igHandle
-          ? {
-              handle: igHandle.startsWith('@') ? igHandle : `@${igHandle}`,
-              followersText: formatFollowerCount(igCount, 'Takipçi'),
-              count: igCount,
-            }
-          : null,
-        youtube: ytHandle
-          ? {
-              handle: ytHandle.startsWith('@') ? ytHandle : `@${ytHandle}`,
-              followersText: formatFollowerCount(ytCount, 'Abone'),
-              count: ytCount,
-            }
-          : null,
-        totalInvitedByHost: attended,
-        totalAttendedForHost: attended,
-        totalPostsForHost: posts,
-        prConversionRate: rate,
-        conversionTier: tier,
-        hostNotes: 'Excel/CSV listesinden içe aktarıldı.',
-        invitationState: 'IDLE',
-        plusOneAllowed: 1,
-      };
-
-      newParsedGuests.push(newGuest);
-    });
-
-    if (newParsedGuests.length > 0) {
-      setGuests((prev) => {
-        const nextList = csvImportMode === 'REPLACE' ? newParsedGuests : [...newParsedGuests, ...prev];
-        try {
-          localStorage.setItem('gala_host_guests_v15', JSON.stringify(nextList));
-        } catch {}
-        return nextList;
-      });
-      setIsCsvModalOpen(false);
-      showToast(
-        `${newParsedGuests.length} davetli ${csvImportMode === 'REPLACE' ? 'listeyi yenileyerek' : 'mevcut listeye eklenerek'} içe aktarıldı.`
-      );
-    } else {
-      showToast('Satırlar ayrıştırılamadı. Lütfen biçimi kontrol ediniz.');
-    }
-  };
-
-  // Yeni Etkinlik / Arşiv Ekleme
-  const handleCreateEvent = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newEventTitle || !newEventMovie) return;
-
-    const newGala: HostGala = {
-      id: `evt-disney-${Date.now()}`,
-      title: newEventTitle,
-      movieTitle: newEventMovie,
-      venue: newEventVenue,
-      doorsOpenAt: '19:00',
-      startsAt: '20:00',
-      capacity: newEventCapacity,
-      confirmedLcv: newEventIsArchive ? archiveAttendedCount : 0,
-      occupancyRate: newEventIsArchive ? Math.round((archiveAttendedCount / newEventCapacity) * 1000) / 10 : 0,
-      isHistoricalArchive: newEventIsArchive,
-      archiveDate: newEventIsArchive ? '2024 Arşivi' : undefined,
-      eventDateText: newEventIsArchive ? 'Geçmiş Gala (Arşiv)' : '2026 Sezonu',
-    };
-
-    setGalas([newGala, ...galas]);
-    setSelectedGalaId(newGala.id);
-    setIsEventModalOpen(false);
-    setNewEventTitle('');
-    setNewEventMovie('');
-    showToast(`${newGala.title} gala listesine eklendi.`);
-  };
-
-  // Mail Önizleme için Temsili Konuk ve Alıcı Metni
-  const previewGuest = useMemo(() => {
-    if (selectedGuestIds.length === 0) return null;
-    return guests.find((g) => g.id === selectedGuestIds[0]) || null;
-  }, [selectedGuestIds, guests]);
-
-  const previewGuestName = useMemo(() => {
-    if (!previewGuest) return 'Sayın Davetlimiz';
-    return `${previewGuest.firstName} ${previewGuest.lastName}`;
-  }, [previewGuest]);
-
-  const previewRecipientText = useMemo(() => {
-    if (!previewGuest) return 'Sayın Davetlimiz';
-    const email =
-      previewGuest.email ||
-      (previewGuest.id === 'go-disney-yigit-ali'
-        ? 'yigitalicolakoglu22@gmail.com'
-        : previewGuest.maskedEmail);
-    if (selectedGuestIds.length === 1 || previewGuest.id === 'go-disney-yigit-ali') {
-      return `${previewGuest.firstName} ${previewGuest.lastName} <${email}>`;
-    }
-    return `Seçilen ${selectedGuestIds.length} Kişi (${previewGuest.firstName} ${previewGuest.lastName} <${email}>)`;
-  }, [previewGuest, selectedGuestIds]);
 
   return (
     <div
-      style={{
-        backgroundColor: customBgColor,
-        backgroundImage: customBgImage ? `url(${customBgImage})` : undefined,
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        backgroundRepeat: 'no-repeat',
-      }}
-      className={`min-h-screen text-xs font-sans transition-colors duration-150 ${
-        isLight ? 'bg-white text-zinc-900' : 'bg-zinc-950 text-zinc-100'
-      }`}
+      className={`min-h-screen flex ${
+        isDark ? 'bg-[#09090b] text-zinc-100' : 'bg-[#fafafa] text-zinc-900'
+      } font-sans transition-colors duration-200 antialiased`}
     >
-      {/* TOAST BİLDİRİMİ */}
-      {toastMessage && (
-        <div className="fixed top-4 right-4 z-50 bg-zinc-900 text-white dark:bg-white dark:text-zinc-950 px-4 py-2 text-xs border border-zinc-700 dark:border-zinc-300 transition-opacity">
-          {toastMessage}
-        </div>
-      )}
-
-      {/* --------------------------------------------------------------------- */}
-      {/* 1. ÜST BAR: TEK SATIR KURUMSAL KİMLİK, GALA SEÇİCİ & AKSİYONLAR      */}
-      {/* --------------------------------------------------------------------- */}
-      <header
-        className={`border-b sticky top-0 z-30 transition ${
-          isLight
-            ? 'bg-white/95 border-zinc-200 text-zinc-900'
-            : 'bg-zinc-950/95 border-zinc-800 text-zinc-100'
-        } backdrop-blur-sm`}
-        style={{
-          backgroundColor: customBgColor ? `${customBgColor}` : undefined,
-        }}
+      {/* =========================================================================
+          SOL SABİT SİDEBAR (PREMIUM NAVIGATION)
+         ========================================================================= */}
+      <aside
+        className={`w-64 shrink-0 flex flex-col justify-between border-r ${
+          isDark ? 'bg-[#0e0e12] border-zinc-800/80' : 'bg-white border-zinc-200/90'
+        } p-4 select-none z-30`}
       >
-        <div className="max-w-5xl mx-auto px-6 py-3 flex items-center justify-between gap-4">
-          {/* Sol Bölüm: Kurumsal Kimlik & Gala Seçici */}
-          <div className="flex items-center gap-3 shrink-0">
+        <div className="space-y-6">
+          {/* Logo & Kurumsal Dağıtımcı Kartı */}
+          <div className="flex items-center gap-3 px-2 py-1">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-500 via-amber-600 to-orange-500 flex items-center justify-center text-white shadow-lg shadow-amber-500/20 font-bold text-lg">
+              <Film className="w-5 h-5 text-zinc-950" />
+            </div>
             <div>
-              <div className="flex items-center gap-2">
-                <span className={`font-semibold tracking-tight text-xs ${isLight ? 'text-zinc-950' : 'text-white'}`}>
-                  Disney Studios Türkiye
-                </span>
-                <span className="text-[10px] text-zinc-400 font-mono">
-                  (Zeynep Yurtbaşı)
-                </span>
+              <div className="text-xs font-bold tracking-tight uppercase flex items-center gap-1.5 text-amber-500">
+                <span>Disney Studios</span>
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
               </div>
-              <div className="flex items-center gap-2 mt-0.5">
-                <select
-                  value={selectedGalaId}
-                  onChange={(e) => setSelectedGalaId(e.target.value)}
-                  className={`text-xs py-0.5 px-1 rounded-none border focus:outline-none transition ${
-                    isLight
-                      ? 'bg-white border-zinc-300 text-zinc-900'
-                      : 'bg-zinc-900 border-zinc-700 text-zinc-100'
-                  }`}
-                >
-                  <optgroup label="Sıradaki Galalar">
-                    {galas
-                      .filter((g) => !g.isHistoricalArchive)
-                      .map((g) => (
-                        <option key={g.id} value={g.id}>
-                          {g.title}
-                        </option>
-                      ))}
-                  </optgroup>
-                  <optgroup label="Geçmiş Gala Arşivi">
-                    {galas
-                      .filter((g) => g.isHistoricalArchive)
-                      .map((g) => (
-                        <option key={g.id} value={g.id}>
-                          {g.title} ({g.archiveDate || g.eventDateText})
-                        </option>
-                      ))}
-                  </optgroup>
-                </select>
-
-                <button
-                  type="button"
-                  onClick={() => setIsEventModalOpen(true)}
-                  className={`text-[11px] px-2 py-0.5 border rounded-none transition ${
-                    isLight
-                      ? 'border-zinc-300 text-zinc-700 hover:bg-zinc-100'
-                      : 'border-zinc-700 text-zinc-300 hover:bg-zinc-900'
-                  }`}
-                  title="Yeni Gala veya Arşiv Ekle"
-                >
-                  Yeni Gala
-                </button>
-
-                {/* ETKİNLİĞİ / ARŞİVİ DÜZENLE BUTONU */}
-                <button
-                  type="button"
-                  onClick={handleOpenEditEvent}
-                  className={`text-[11px] px-2 py-0.5 border rounded-none transition ${
-                    isLight
-                      ? 'border-zinc-300 text-zinc-700 hover:bg-zinc-100'
-                      : 'border-zinc-700 text-zinc-300 hover:bg-zinc-900'
-                  }`}
-                  title="Seçili Galayı veya Arşivi Düzenle"
-                >
-                  Etkinliği Düzenle
-                </button>
+              <div className="text-[13px] font-semibold tracking-tight leading-tight">
+                Zeynep Yurtbaşı
               </div>
+              <div className="text-[10px] text-zinc-400">Gala & PR Operasyon Direktörü</div>
             </div>
           </div>
 
-          {/* Orta Bölüm: Kategori Filtre Sekmeleri */}
-          <nav className="flex items-center gap-1 sm:gap-2">
-            {[
-              { id: 'ALL', label: 'Tümü' },
-              { id: 'PR', label: 'PR & VIP' },
-              { id: 'PRESS', label: 'Basın' },
-              { id: 'COCKPIT', label: `Gelen Mailler (${inboundMails.length})` },
-            ].map((tab) => {
-              const isActive = activeNav === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveNav(tab.id as any)}
-                  className={`px-3 py-1.5 text-xs font-medium border-b-2 transition ${
-                    isActive
-                      ? isLight
-                        ? 'border-zinc-900 text-zinc-950 font-semibold'
-                        : 'border-white text-white font-semibold'
-                      : isLight
-                      ? 'border-transparent text-zinc-500 hover:text-zinc-900'
-                      : 'border-transparent text-zinc-400 hover:text-white'
-                  }`}
-                >
-                  {tab.label}
-                </button>
-              );
-            })}
-          </nav>
+          {/* Ana Menü Sekmeleri */}
+          <div className="space-y-1">
+            <div className="px-2 pb-1.5 text-[10px] font-bold tracking-wider uppercase text-zinc-500">
+              Operasyon Merkezi
+            </div>
 
-          {/* Sağ Bölüm: En Temel 4 Buton (Kişi Ekle, Excel/CSV Yükle, Davet Et, Ayarlar) */}
-          <div className="flex items-center gap-2 shrink-0">
-            {/* 1. Kişi Ekle */}
             <button
-              type="button"
-              onClick={() => setIsAddGuestModalOpen(true)}
-              className={`px-3 py-1.5 rounded-none text-xs font-medium border transition ${
-                isLight
-                  ? 'bg-white border-zinc-300 text-zinc-800 hover:bg-zinc-50'
-                  : 'bg-zinc-900 border-zinc-700 text-zinc-200 hover:bg-zinc-800'
+              onClick={() => setActiveTab('hub')}
+              className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition ${
+                activeTab === 'hub'
+                  ? isDark
+                    ? 'bg-amber-500/15 text-amber-400 font-semibold shadow-sm'
+                    : 'bg-amber-100/70 text-amber-900 font-semibold'
+                  : isDark
+                  ? 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50'
+                  : 'text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100'
               }`}
             >
-              <span>Kişi Ekle</span>
-            </button>
-
-            {/* 2. Excel / CSV Yükle */}
-            <button
-              type="button"
-              onClick={() => setIsCsvModalOpen(true)}
-              className={`px-3 py-1.5 rounded-none text-xs font-medium border transition ${
-                isLight
-                  ? 'bg-white border-zinc-300 text-zinc-800 hover:bg-zinc-50'
-                  : 'bg-zinc-900 border-zinc-700 text-zinc-200 hover:bg-zinc-800'
-              }`}
-            >
-              <span>Excel / CSV Yükle</span>
-            </button>
-
-            {/* 3. TEK GENEL "DAVET ET" BUTONU (EN BELİRGİN ANA BUTON — DOĞRUDAN isLight STATE'İNE BAĞLI) */}
-            <button
-              type="button"
-              onClick={() => openCampaignModal(selectedGala)}
-              className={`px-4 py-1.5 text-xs font-semibold rounded-none transition ${
-                isLight
-                  ? 'bg-zinc-900 text-white hover:bg-zinc-800'
-                  : 'bg-white text-zinc-950 hover:bg-zinc-200'
-              }`}
-              title="Gala Davetiyesi Gönder"
-            >
-              <span>Davet Et</span>
-            </button>
-
-            {/* 4. Ayarlar */}
-            <button
-              type="button"
-              onClick={() => setIsSettingsModalOpen(true)}
-              className={`px-3 py-1.5 rounded-none text-xs font-medium border transition ${
-                isLight
-                  ? 'bg-white border-zinc-300 text-zinc-700 hover:bg-zinc-50'
-                  : 'bg-zinc-900 border-zinc-700 text-zinc-300 hover:bg-zinc-800'
-              }`}
-            >
-              Ayarlar
-            </button>
-          </div>
-        </div>
-      </header>
-
-      {/* --------------------------------------------------------------------- */}
-      {/* 2. ANA İÇERİK KAPSAYICISI (MAX-W-5XL ORTALANMIŞ)                     */}
-      {/* --------------------------------------------------------------------- */}
-      <main className="max-w-5xl mx-auto px-6 py-6 space-y-6">
-        {/* TEK SATIRLIK GALA ÖZETİ & SAĞDA İKİNCİ ERİŞİM NOKTASI "DAVET ET" */}
-        <div
-          className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs pb-4 border-b ${
-            isLight ? 'border-zinc-200' : 'border-zinc-800'
-          }`}
-        >
-          {/* Sol: Bilgi Satırı */}
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className={`font-semibold ${isLight ? 'text-zinc-950' : 'text-white'}`}>
-              {selectedGala.title}
-            </span>
-            <span className="text-zinc-400">·</span>
-            <span className="text-zinc-500">{selectedGala.eventDateText}</span>
-            <span className="text-zinc-400">·</span>
-            <span className="text-zinc-500">{selectedGala.venue}</span>
-            <span className="text-zinc-400">·</span>
-            <span className={`font-medium font-mono ${isLight ? 'text-zinc-900' : 'text-zinc-300'}`}>
-              {selectedGala.confirmedLcv} / {selectedGala.capacity} Katılımcı (%{selectedGala.occupancyRate})
-            </span>
-          </div>
-
-          {/* Sağ: İkinci Erişim Noktası "Davet Et" */}
-          <div className="flex items-center gap-2 shrink-0">
-            <button
-              type="button"
-              onClick={() => openCampaignModal(selectedGala)}
-              className={`px-3.5 py-1.5 text-xs font-semibold rounded-none transition ${
-                isLight
-                  ? 'bg-zinc-900 text-white hover:bg-zinc-800'
-                  : 'bg-white text-zinc-950 hover:bg-zinc-200'
-              }`}
-              title="Gala Davetiye Sihirbazını Aç"
-            >
-              Davet Et
-            </button>
-          </div>
-        </div>
-
-        {/* ALT ARAÇ ÇUBUĞU (ARAMA, FİLTRE & İKİNCİL ARAÇLAR) */}
-        <div
-          className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs pb-3 border-b ${
-            isLight ? 'border-zinc-200' : 'border-zinc-800'
-          }`}
-        >
-          {/* Sol: Arama & Filtre */}
-          <div className="flex items-center gap-2 flex-wrap">
-            <input
-              type="text"
-              placeholder="İsim veya kurum ara..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className={`text-xs px-2.5 py-1.5 rounded-none border focus:outline-none transition w-44 sm:w-56 ${
-                isLight
-                  ? 'bg-white border-zinc-300 text-zinc-900 placeholder-zinc-400 focus:border-zinc-500'
-                  : 'bg-zinc-900 border-zinc-700 text-zinc-200 placeholder-zinc-500 focus:border-zinc-500'
-              }`}
-            />
-
-            <select
-              value={activeFilter}
-              onChange={(e) => setActiveFilter(e.target.value)}
-              className={`text-xs px-2.5 py-1.5 rounded-none border focus:outline-none ${
-                isLight
-                  ? 'bg-white border-zinc-300 text-zinc-700'
-                  : 'bg-zinc-900 border-zinc-700 text-zinc-300'
-              }`}
-            >
-              <option value="ALL">Tümü</option>
-              <option value="HIGH_PR">Yüksek Dönüşüm (%75+)</option>
-              <option value="LOW_PR">Düşük Dönüşüm (&lt;%40)</option>
-              <option value="GHOST">Paylaşım Yapmayanlar</option>
-              <option value="INVITED_ONLY">Davet Edilenler</option>
-              <option value="WAITLIST_ONLY">Yedek Liste</option>
-            </select>
-          </div>
-
-          {/* Sağ: İkincil Araçlar (Takipçileri Güncelle, Liste İndir, Arka Plan) */}
-          <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap justify-end">
-            {/* LCV Senkronize Et Butonu */}
-            <button
-              type="button"
-              onClick={() => {
-                syncRsvpResponses();
-                showToast('LCV yanıtları sunucu ve tarayıcı deposu ile senkronize edildi.');
-              }}
-              className={`px-2.5 sm:px-3 py-1.5 rounded-none text-xs font-medium border transition ${
-                isLight
-                  ? 'bg-white border-zinc-300 text-zinc-800 hover:bg-zinc-50'
-                  : 'bg-zinc-900 border-zinc-700 text-zinc-200 hover:bg-zinc-800'
-              }`}
-              title="LCV yanıtlarını ve bilet durumlarını canlı senkronize et"
-            >
-              <span>LCV Senkronize Et</span>
-            </button>
-
-            {/* Takipçileri Güncelle Motoru Butonu */}
-            <button
-              type="button"
-              onClick={handleSyncFollowers}
-              className={`px-2.5 sm:px-3 py-1.5 rounded-none text-xs font-medium border transition ${
-                isLight
-                  ? 'bg-white border-zinc-300 text-zinc-800 hover:bg-zinc-50'
-                  : 'bg-zinc-900 border-zinc-700 text-zinc-200 hover:bg-zinc-800'
-              }`}
-              title="Instagram ve YouTube Takipçi Sayılarını Güncelle ve Senkronize Et"
-            >
-              <span>Takipçileri Güncelle</span>
-            </button>
-
-            {/* Liste İndir */}
-            <button
-              type="button"
-              onClick={handleExportDoorList}
-              className={`px-2.5 sm:px-3 py-1.5 rounded-none text-xs font-medium border transition ${
-                isLight
-                  ? 'bg-white border-zinc-300 text-zinc-800 hover:bg-zinc-50'
-                  : 'bg-zinc-900 border-zinc-700 text-zinc-200 hover:bg-zinc-800'
-              }`}
-              title="Kapı Personeli için Güvenlik Listesi İndir"
-            >
-              <span>Liste İndir</span>
-            </button>
-
-            {/* Hızlı Arka Plan Seçici Butonu */}
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => setIsBgSelectorOpen((prev) => !prev)}
-                className={`px-2.5 sm:px-3 py-1.5 rounded-none text-xs font-medium border transition ${
-                  isLight
-                    ? 'bg-white border-zinc-300 text-zinc-800 hover:bg-zinc-50'
-                    : 'bg-zinc-900 border-zinc-700 text-zinc-200 hover:bg-zinc-800'
-                }`}
-                title="Arayüz Arka Plan Rengi ve Görseli Seç"
-              >
-                <span>Arka Plan</span>
-              </button>
-
-              {/* Hızlı Arka Plan Açılır Menüsü */}
-              {isBgSelectorOpen && (
-                <div
-                  className={`absolute right-0 mt-1 w-64 p-3 border rounded-none z-50 space-y-2 shadow-none ${
-                    isLight ? 'bg-white border-zinc-300 text-zinc-900' : 'bg-zinc-950 border-zinc-800 text-zinc-100'
-                  }`}
-                >
-                  <div className="flex items-center justify-between pb-1 border-b border-zinc-200 dark:border-zinc-800">
-                    <span className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500">
-                      Arka Plan Paleti
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setIsBgSelectorOpen(false)}
-                      className="text-[11px] text-zinc-400 hover:text-zinc-600"
-                    >
-                      ✕
-                    </button>
-                  </div>
-                  <div className="space-y-1">
-                    {BG_PRESETS.map((preset) => (
-                      <button
-                        key={preset.id}
-                        type="button"
-                        onClick={() => {
-                          handleSelectBgPreset(preset);
-                          setIsBgSelectorOpen(false);
-                        }}
-                        className={`w-full text-left px-2 py-1.5 text-xs border rounded-none flex items-center justify-between transition ${
-                          customBgColor.toUpperCase() === preset.color.toUpperCase()
-                            ? 'border-zinc-950 dark:border-white font-semibold'
-                            : 'border-transparent hover:bg-zinc-100 dark:hover:bg-zinc-900'
-                        }`}
-                      >
-                        <span>{preset.label}</span>
-                        <span
-                          className="w-3.5 h-3.5 border border-zinc-400"
-                          style={{ backgroundColor: preset.color }}
-                        />
-                      </button>
-                    ))}
-                  </div>
-
-                  <div className="pt-2 border-t border-zinc-200 dark:border-zinc-800 space-y-1.5">
-                    <label className="text-[11px] text-zinc-500 block">Özel Renk Seçici:</label>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="color"
-                        value={customBgColor.startsWith('#') ? customBgColor : '#FFFFFF'}
-                        onChange={(e) => handleCustomColorChange(e.target.value)}
-                        className="w-7 h-7 p-0 border border-zinc-300 cursor-pointer rounded-none"
-                      />
-                      <input
-                        type="text"
-                        value={customBgColor}
-                        onChange={(e) => handleCustomColorChange(e.target.value)}
-                        className={`flex-1 px-2 py-1 font-mono text-xs border rounded-none focus:outline-none ${
-                          isLight ? 'bg-white border-zinc-300 text-zinc-900' : 'bg-zinc-900 border-zinc-700 text-zinc-100'
-                        }`}
-                        placeholder="#FFFFFF"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="pt-1.5 space-y-1">
-                    <label className="text-[11px] text-zinc-500 block">Özel Arka Plan Görseli URL:</label>
-                    <input
-                      type="text"
-                      value={customBgImage}
-                      onChange={(e) => handleCustomImageChange(e.target.value)}
-                      placeholder="https://..."
-                      className={`w-full px-2 py-1 text-xs border rounded-none focus:outline-none ${
-                        isLight ? 'bg-white border-zinc-300 text-zinc-900' : 'bg-zinc-900 border-zinc-700 text-zinc-100'
-                      }`}
-                    />
-                  </div>
-                </div>
+              <div className="flex items-center gap-2.5">
+                <Compass className="w-4 h-4" />
+                <span>Etkinlik & Mesaj Hub'ı</span>
+              </div>
+              {inboundMails.filter((m) => m.status === 'NEEDS_AGENT_REVIEW').length > 0 && (
+                <span className="w-2 h-2 rounded-full bg-amber-500" />
               )}
+            </button>
+
+            <button
+              onClick={() => setActiveTab('pr')}
+              className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition ${
+                activeTab === 'pr'
+                  ? isDark
+                    ? 'bg-amber-500/15 text-amber-400 font-semibold shadow-sm'
+                    : 'bg-amber-100/70 text-amber-900 font-semibold'
+                  : isDark
+                  ? 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50'
+                  : 'text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100'
+              }`}
+            >
+              <div className="flex items-center gap-2.5">
+                <Award className="w-4 h-4" />
+                <span>PR & VIP Davetlileri</span>
+              </div>
+              <span
+                className={`text-[10px] px-1.5 py-0.5 rounded-md font-mono ${
+                  isDark ? 'bg-zinc-800 text-zinc-300' : 'bg-zinc-100 text-zinc-700'
+                }`}
+              >
+                {stats.totalPr}
+              </span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('press')}
+              className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition ${
+                activeTab === 'press'
+                  ? isDark
+                    ? 'bg-amber-500/15 text-amber-400 font-semibold shadow-sm'
+                    : 'bg-amber-100/70 text-amber-900 font-semibold'
+                  : isDark
+                  ? 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50'
+                  : 'text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100'
+              }`}
+            >
+              <div className="flex items-center gap-2.5">
+                <FileText className="w-4 h-4" />
+                <span>Basın & Medya Listesi</span>
+              </div>
+              <span
+                className={`text-[10px] px-1.5 py-0.5 rounded-md font-mono ${
+                  isDark ? 'bg-zinc-800 text-zinc-300' : 'bg-zinc-100 text-zinc-700'
+                }`}
+              >
+                {stats.totalPress}
+              </span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('archive')}
+              className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition ${
+                activeTab === 'archive'
+                  ? isDark
+                    ? 'bg-amber-500/15 text-amber-400 font-semibold shadow-sm'
+                    : 'bg-amber-100/70 text-amber-900 font-semibold'
+                  : isDark
+                  ? 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50'
+                  : 'text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100'
+              }`}
+            >
+              <div className="flex items-center gap-2.5">
+                <Layers className="w-4 h-4" />
+                <span>Geçmiş Galalar Arşivi</span>
+              </div>
+              <span
+                className={`text-[10px] px-1.5 py-0.5 rounded-md ${
+                  isDark ? 'bg-zinc-800 text-zinc-400' : 'bg-zinc-100 text-zinc-500'
+                }`}
+              >
+                2 Gala
+              </span>
+            </button>
+          </div>
+
+          {/* DİNAMİK KISAYOLLAR: SIRADAKİ 2 & GEÇMİŞ 2 */}
+          <div className="space-y-2 pt-2 border-t border-zinc-800/40">
+            <div className="px-2 text-[10px] font-bold tracking-wider uppercase text-zinc-500">
+              Sıradaki 2 Gala (Kısayol)
             </div>
+            {galas
+              .filter((g) => !g.isHistoricalArchive)
+              .slice(0, 2)
+              .map((g) => (
+                <button
+                  key={g.id}
+                  onClick={() => {
+                    setSelectedGalaId(g.id);
+                    setActiveTab('gala');
+                    showToast(`"${g.title}" detayları açıldı.`);
+                  }}
+                  className={`w-full text-left p-2.5 rounded-xl border transition group ${
+                    selectedGalaId === g.id && activeTab === 'gala'
+                      ? isDark
+                        ? 'border-amber-500/50 bg-amber-500/10'
+                        : 'border-amber-500 bg-amber-50'
+                      : isDark
+                      ? 'border-zinc-800/70 bg-zinc-900/40 hover:bg-zinc-900'
+                      : 'border-zinc-200 bg-zinc-50 hover:bg-zinc-100'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold truncate group-hover:text-amber-500 transition">
+                      {g.movieTitle}
+                    </span>
+                    <span className="text-[10px] text-amber-500 font-mono">
+                      %{g.occupancyRate.toFixed(0)}
+                    </span>
+                  </div>
+                  <div className="text-[10px] text-zinc-400 truncate mt-0.5">
+                    {g.eventDateText.split(',')[0]}
+                  </div>
+                </button>
+              ))}
+
+            <div className="px-2 pt-2 text-[10px] font-bold tracking-wider uppercase text-zinc-500">
+              Geçmiş 2 Arşiv (Kısayol)
+            </div>
+            {galas
+              .filter((g) => g.isHistoricalArchive)
+              .slice(0, 2)
+              .map((g) => (
+                <button
+                  key={g.id}
+                  onClick={() => {
+                    setSelectedGalaId(g.id);
+                    setActiveTab('gala');
+                    showToast(`"${g.title}" arşivi açıldı.`);
+                  }}
+                  className={`w-full text-left p-2.5 rounded-xl border transition ${
+                    selectedGalaId === g.id && activeTab === 'gala'
+                      ? isDark
+                        ? 'border-zinc-600 bg-zinc-800'
+                        : 'border-zinc-400 bg-zinc-100'
+                      : isDark
+                      ? 'border-zinc-800/60 bg-zinc-900/30 hover:bg-zinc-900/70'
+                      : 'border-zinc-200/80 bg-zinc-50/60 hover:bg-zinc-100'
+                  }`}
+                >
+                  <div className="flex items-center justify-between text-xs font-medium text-zinc-400">
+                    <span className="truncate">{g.movieTitle}</span>
+                    <span className="text-[9px] px-1 rounded bg-zinc-800 text-zinc-300">Arşiv</span>
+                  </div>
+                  <div className="text-[10px] text-zinc-400 truncate mt-0.5">{g.archiveDate}</div>
+                </button>
+              ))}
           </div>
         </div>
 
-        {/* ------------------------------------------------------------------- */}
-        {/* B. GELEN MAIL ÖNİZLEMELERİ (DÜZ TABLO / LİSTE GÖRÜNÜMÜ)     */}
-        {/* ------------------------------------------------------------------- */}
-        {(activeNav === 'ALL' || activeNav === 'COCKPIT') && (
-          <section
-            className={`border p-4 space-y-3 transition ${
-              isLight ? 'bg-white border-zinc-200' : 'bg-zinc-950 border-zinc-800'
+        {/* Sidebar Alt: Tema & Hızlı Bilgi */}
+        <div className="pt-4 border-t border-zinc-800/50 space-y-2">
+          {/* Önceki Arayüz Linki (Yedek) */}
+          <Link
+            href="/host-v1"
+            className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-[11px] transition ${
+              isDark
+                ? 'bg-zinc-900/80 text-zinc-400 hover:text-zinc-200'
+                : 'bg-zinc-100 text-zinc-600 hover:text-zinc-900'
+            }`}
+            title="Eski Arayüz Versiyonu"
+          >
+            <span>Önceki UI (V1 Yedek)</span>
+            <ExternalLink className="w-3 h-3 opacity-60" />
+          </Link>
+
+          <button
+            onClick={toggleTheme}
+            className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium border transition ${
+              isDark
+                ? 'border-zinc-800 bg-zinc-900 text-zinc-300 hover:bg-zinc-800'
+                : 'border-zinc-200 bg-zinc-100 text-zinc-700 hover:bg-zinc-200'
             }`}
           >
-            <div className="flex items-center justify-between pb-2 border-b border-zinc-200 dark:border-zinc-800">
-              <h3 className={`text-xs font-bold uppercase tracking-wider ${isLight ? 'text-zinc-900' : 'text-zinc-100'}`}>
-                Gelen E-Posta & LCV Yanıt Önizlemeleri
-              </h3>
-              <span className="text-xs text-zinc-500 font-mono">
-                {inboundMails.length} İleti
-              </span>
+            <div className="flex items-center gap-2">
+              {isDark ? <Sun className="w-3.5 h-3.5 text-amber-400" /> : <Moon className="w-3.5 h-3.5 text-indigo-600" />}
+              <span>{isDark ? 'Açık Temaya Geç' : 'Koyu Temaya Geç'}</span>
             </div>
+            <span className="text-[10px] opacity-60 font-mono">{theme.toUpperCase()}</span>
+          </button>
+        </div>
+      </aside>
 
-            <div className={`border-t border-b divide-y ${isLight ? 'border-zinc-200 divide-zinc-200' : 'border-zinc-800 divide-zinc-800'}`}>
-              {inboundMails.map((mail) => (
-                <div key={mail.id} className="py-2.5 px-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className={`font-semibold ${isLight ? 'text-zinc-900' : 'text-zinc-100'}`}>{mail.fromName}</span>
-                      <span className="text-zinc-400 font-mono text-[11px]">{mail.fromEmail}</span>
-                      <span className="text-zinc-400 text-[11px]">· {mail.receivedAt}</span>
-                    </div>
-                    <p className="mt-1 text-zinc-600 dark:text-zinc-400 truncate">
-                      <strong className={`font-medium ${isLight ? 'text-zinc-900' : 'text-zinc-200'}`}>{mail.subject}</strong>
-                      {' — '}
-                      <span className="italic">&quot;{mail.preview}&quot;</span>
-                    </p>
+      {/* =========================================================================
+          ANA İÇERİK ALANI
+         ========================================================================= */}
+      <main className="flex-1 flex flex-col min-w-0 overflow-y-auto">
+        {/* Üst Bar: Seçili Gala Başlığı & Hızlı Aksiyon */}
+        <header
+          className={`h-16 shrink-0 border-b px-8 flex items-center justify-between backdrop-blur-md sticky top-0 z-20 ${
+            isDark ? 'bg-[#09090b]/80 border-zinc-800/80' : 'bg-white/80 border-zinc-200/90'
+          }`}
+        >
+          <div className="flex items-center gap-3">
+            <h1 className="text-sm font-bold tracking-tight">
+              {activeTab === 'hub' && 'Operasyon Hub & Gala Akışı'}
+              {activeTab === 'gala' && `${selectedGala.title}`}
+              {activeTab === 'pr' && 'PR & VIP Davetli Rehberi'}
+              {activeTab === 'press' && 'Ulusal Basın & Medya Akreditasyonu'}
+              {activeTab === 'archive' && 'Geçmiş Galalar Arşivi'}
+            </h1>
+            <span className="text-zinc-500">·</span>
+            <span className="text-xs text-amber-500 font-semibold flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-amber-500" />
+              {selectedGala.movieTitle} (27 Kasım 2024)
+            </span>
+          </div>
+
+          <div className="flex items-center gap-3">
+            {/* Toplu Davet Oluştur Butonu */}
+            <button
+              onClick={() => {
+                setInviteSelectedGuestIds([]);
+                setIsInviteModalOpen(true);
+              }}
+              className="px-4 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-zinc-950 font-bold rounded-xl text-xs flex items-center gap-2 shadow-lg shadow-amber-500/20 transition active:scale-95"
+            >
+              <Send className="w-3.5 h-3.5" />
+              <span>Yeni Davet Oluştur</span>
+            </button>
+          </div>
+        </header>
+
+        {/* =====================================================================
+            SEKME 1: ETKİNLİK & MESAJ HUB'I (WELCOME-FREE HIGH-END DASHBOARD)
+           ===================================================================== */}
+        {activeTab === 'hub' && (
+          <div className="p-8 space-y-8 max-w-7xl mx-auto w-full">
+            {/* Canlı Gala Hero Banner */}
+            <div
+              className={`relative overflow-hidden rounded-3xl border p-8 bg-gradient-to-r ${selectedGala.bannerGradient} ${
+                isDark ? 'border-zinc-800' : 'border-zinc-300'
+              } shadow-2xl`}
+            >
+              <div className="relative z-10 grid grid-cols-1 lg:grid-cols-3 gap-8 items-center">
+                <div className="lg:col-span-2 space-y-3">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30 text-xs font-semibold">
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>Sıradaki Ana Prömiyer</span>
                   </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    {mail.id === 'mail-02' ? (
-                      <button
-                        type="button"
-                        onClick={() => handleApproveInboundMail(mail.id, 'APPROVE_PRESS_ACCREDITATION')}
-                        className={`px-3 py-1 text-xs font-medium border transition ${
-                          mail.status === 'PROCESSED'
-                            ? 'bg-zinc-100 text-zinc-400 border-zinc-200 dark:bg-zinc-900 dark:text-zinc-600 dark:border-zinc-800'
-                            : isLight
-                            ? 'bg-zinc-900 text-white border-zinc-900 hover:bg-zinc-800'
-                            : 'bg-white text-zinc-950 border-white hover:bg-zinc-200'
-                        }`}
-                      >
-                        {mail.status === 'PROCESSED' ? 'Akreditasyon Verildi ✓' : 'AI Taslağını Onayla & Akreditasyon Ver'}
-                      </button>
-                    ) : mail.id === 'mail-01' ? (
-                      <button
-                        type="button"
-                        onClick={() => handleApproveInboundMail(mail.id, 'APPROVE_VIP')}
-                        className={`px-3 py-1 text-xs font-medium border transition ${
-                          mail.status === 'PROCESSED'
-                            ? 'bg-zinc-100 text-zinc-400 border-zinc-200 dark:bg-zinc-900 dark:text-zinc-600 dark:border-zinc-800'
-                            : isLight
-                            ? 'bg-zinc-900 text-white border-zinc-900 hover:bg-zinc-800'
-                            : 'bg-white text-zinc-950 border-white hover:bg-zinc-200'
-                        }`}
-                      >
-                        {mail.status === 'PROCESSED' ? 'LCV Onaylandı (+1) ✓' : 'LCV Onayla (+1)'}
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => handleApproveInboundMail(mail.id, 'APPROVE_VIP')}
-                        className={`px-3 py-1 text-xs font-medium border transition ${
-                          mail.status === 'PROCESSED'
-                            ? 'bg-zinc-100 text-zinc-400 border-zinc-200 dark:bg-zinc-900 dark:text-zinc-600 dark:border-zinc-800'
-                            : isLight
-                            ? 'bg-zinc-900 text-white border-zinc-900 hover:bg-zinc-800'
-                            : 'bg-white text-zinc-950 border-white hover:bg-zinc-200'
-                        }`}
-                      >
-                        {mail.status === 'PROCESSED' ? 'İşlendi ✓' : 'Onayla'}
-                      </button>
-                    )}
+                  <h2 className="text-3xl font-extrabold tracking-tight leading-tight">
+                    {selectedGala.title}
+                  </h2>
+                  <p className="text-xs text-zinc-300 max-w-2xl leading-relaxed">
+                    {selectedGala.synopsis}
+                  </p>
+
+                  <div className="pt-2 flex flex-wrap gap-4 text-xs text-zinc-300">
+                    <div className="flex items-center gap-1.5">
+                      <Calendar className="w-4 h-4 text-amber-400" />
+                      <span>{selectedGala.eventDateText}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <Clock className="w-4 h-4 text-amber-400" />
+                      <span>Kapı Açılış: {selectedGala.doorsOpenAt} · Film: {selectedGala.startsAt}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <Building2 className="w-4 h-4 text-amber-400" />
+                      <span>{selectedGala.venue}</span>
+                    </div>
                   </div>
                 </div>
-              ))}
+
+                {/* Doluluk ve Kapasite Göstergesi */}
+                <div
+                  className={`p-6 rounded-2xl border ${
+                    isDark ? 'bg-zinc-950/70 border-zinc-800' : 'bg-white/80 border-zinc-200'
+                  } backdrop-blur-md space-y-4`}
+                >
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-semibold text-zinc-400">LCV Onay Durumu</span>
+                    <span className="font-bold text-amber-500 font-mono">
+                      {selectedGala.confirmedLcv} / {selectedGala.capacity} Koltuk
+                    </span>
+                  </div>
+
+                  {/* Progress Bar */}
+                  <div className="w-full bg-zinc-800 rounded-full h-3 overflow-hidden">
+                    <div
+                      className="bg-gradient-to-r from-amber-500 to-orange-500 h-full rounded-full transition-all duration-500"
+                      style={{ width: `${selectedGala.occupancyRate}%` }}
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between text-[11px] text-zinc-400">
+                    <span>%{selectedGala.occupancyRate.toFixed(1)} Doluluk</span>
+                    <span>{selectedGala.capacity - selectedGala.confirmedLcv} Kalan Kontenjan</span>
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      setSelectedCategoryFilter('ALL');
+                      setActiveTab('pr');
+                    }}
+                    className="w-full py-2 rounded-xl text-xs font-semibold bg-amber-500/20 text-amber-400 hover:bg-amber-500/30 transition flex items-center justify-center gap-1.5"
+                  >
+                    <span>Davetli Listesini İncele</span>
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
             </div>
-          </section>
+
+            {/* Grid: 2 Sütun — Sol: Gelen E-postalar & AI Yanıtları | Sağ: Hızlı Metrikler */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              {/* Sol: Gelen LCV E-postaları & AI Agent Teyitleri */}
+              <div
+                className={`lg:col-span-2 rounded-2xl border ${
+                  isDark ? 'bg-[#0e0e12] border-zinc-800' : 'bg-white border-zinc-200'
+                } p-6 space-y-4 shadow-sm`}
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-sm font-bold tracking-tight flex items-center gap-2">
+                      <Mail className="w-4 h-4 text-amber-500" />
+                      <span>Gelen LCV E-postaları & AI Analiz Akışı</span>
+                    </h3>
+                    <p className="text-[11px] text-zinc-400">
+                      Davetlilerden dönen e-postalar LLM tarafından sınıflandırılır ve otomatik işlenir.
+                    </p>
+                  </div>
+                  <span className="text-[10px] px-2 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-semibold">
+                    AI Agent Aktif
+                  </span>
+                </div>
+
+                <div className="space-y-3">
+                  {inboundMails.map((mail) => (
+                    <div
+                      key={mail.id}
+                      className={`p-4 rounded-xl border transition ${
+                        mail.status === 'NEEDS_AGENT_REVIEW'
+                          ? isDark
+                            ? 'bg-amber-500/5 border-amber-500/30'
+                            : 'bg-amber-50/60 border-amber-300'
+                          : isDark
+                          ? 'bg-zinc-900/40 border-zinc-800/60'
+                          : 'bg-zinc-50 border-zinc-200'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold">{mail.fromName}</span>
+                          <span className="text-[10px] text-zinc-400">({mail.fromEmail})</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={`text-[10px] px-2 py-0.5 rounded-md font-semibold ${
+                              mail.aiClassification === 'CONFIRMED'
+                                ? 'bg-emerald-500/15 text-emerald-400'
+                                : mail.aiClassification === 'DECLINED'
+                                ? 'bg-rose-500/15 text-rose-400'
+                                : 'bg-amber-500/15 text-amber-400'
+                            }`}
+                          >
+                            {mail.aiClassification === 'CONFIRMED' && '✓ LCV Onaylandı'}
+                            {mail.aiClassification === 'DECLINED' && '✗ Katılamıyor'}
+                            {mail.aiClassification === 'QUESTION' && '❓ Özel Talep'}
+                          </span>
+                          <span className="text-[10px] text-zinc-500">{mail.receivedAt}</span>
+                        </div>
+                      </div>
+
+                      <div className="text-xs font-medium mt-1 text-zinc-300">{mail.subject}</div>
+                      <div className="text-xs text-zinc-400 mt-0.5 leading-relaxed">
+                        "{mail.preview}"
+                      </div>
+
+                      {mail.status === 'NEEDS_AGENT_REVIEW' && (
+                        <div className="mt-3 pt-2 border-t border-zinc-800/40 flex items-center justify-between">
+                          <span className="text-[10px] text-amber-500 font-semibold flex items-center gap-1">
+                            <AlertCircle className="w-3 h-3" />
+                            <span>Özel talep inceleme bekliyor</span>
+                          </span>
+                          <button
+                            onClick={() => {
+                              setInboundMails((prev) =>
+                                prev.map((m) =>
+                                  m.id === mail.id ? { ...m, status: 'PROCESSED' } : m
+                                )
+                              );
+                              showToast(`"${mail.fromName}" talebi yanıtlandı ve arşivlendi.`);
+                            }}
+                            className="px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-600 text-zinc-950 font-bold text-[11px] transition"
+                          >
+                            Talebi Onayla & Yanıtla
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Sağ: Dağıtımcı PR Özeti & Hızlı Göstergeler */}
+              <div className="space-y-6">
+                <div
+                  className={`rounded-2xl border ${
+                    isDark ? 'bg-[#0e0e12] border-zinc-800' : 'bg-white border-zinc-200'
+                  } p-6 space-y-4 shadow-sm`}
+                >
+                  <h3 className="text-sm font-bold tracking-tight">Kümülatif PR & Medya Gücü</h3>
+
+                  <div className="space-y-3">
+                    <div className="p-3.5 rounded-xl bg-zinc-900/50 border border-zinc-800 flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-lg bg-purple-500/20 text-purple-400 flex items-center justify-center font-bold">
+                          <TrendingUp className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <div className="text-[11px] text-zinc-400">Toplam Organik Erişim</div>
+                          <div className="text-sm font-bold text-zinc-100">{stats.totalReachText}</div>
+                        </div>
+                      </div>
+                      <span className="text-[10px] text-emerald-400 font-semibold">+%24 Artış</span>
+                    </div>
+
+                    <div className="p-3.5 rounded-xl bg-zinc-900/50 border border-zinc-800 flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-lg bg-blue-500/20 text-blue-400 flex items-center justify-center font-bold">
+                          <UserCheck className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <div className="text-[11px] text-zinc-400">Kayıtlı VIP & Basın</div>
+                          <div className="text-sm font-bold text-zinc-100">{guests.length} Konuk</div>
+                        </div>
+                      </div>
+                      <span className="text-[10px] text-zinc-400 font-mono">100% Doğrulanmış</span>
+                    </div>
+
+                    <div className="p-3.5 rounded-xl bg-zinc-900/50 border border-zinc-800 flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold">
+                          <ShieldCheck className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <div className="text-[11px] text-zinc-400">Dinamik QR Kripto Kapı</div>
+                          <div className="text-sm font-bold text-zinc-100">Aktif & Hazır</div>
+                        </div>
+                      </div>
+                      <span className="text-[10px] text-emerald-400 font-mono">30s TOTP</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Hızlı Aksiyon Kartı */}
+                <div
+                  className={`rounded-2xl border p-6 space-y-3 ${
+                    isDark ? 'bg-gradient-to-br from-amber-950/20 to-zinc-950 border-amber-900/30' : 'bg-amber-50 border-amber-200'
+                  }`}
+                >
+                  <div className="text-xs font-bold text-amber-500 uppercase tracking-wider">
+                    Operasyon İpucu
+                  </div>
+                  <h4 className="text-sm font-bold">Takipçisi 1M+ Olanlara Özel Öncelik</h4>
+                  <p className="text-xs text-zinc-400 leading-relaxed">
+                    Kırmızı halı röportajları için yüksek takipçili PR davetlilerine WhatsApp ve e-posta üzerinden VIP akreditasyon bileti atayabilirsiniz.
+                  </p>
+                  <button
+                    onClick={() => {
+                      setActiveTab('pr');
+                      setSelectedConversionFilter('HIGH');
+                    }}
+                    className="w-full py-2 bg-amber-500 hover:bg-amber-600 text-zinc-950 font-bold rounded-xl text-xs transition"
+                  >
+                    Yüksek Dönüşümlüleri Listele
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
         )}
 
-        {/* ------------------------------------------------------------------- */}
-        {/* C. DÜMDÜZ ANA İSİM LİSTESİ TABLOSU                          */}
-        {/* (İSİMLERİN YANINDA "DAVET ET" TUŞU KESİNLİKLE YOK! DOĞRUDAN DÜZENLE & SİL) */}
-        {/* ------------------------------------------------------------------- */}
-        {activeNav !== 'COCKPIT' && (
-          <div className="border border-zinc-200 dark:border-zinc-800 overflow-x-auto">
-            <table className="w-full text-left text-xs border-collapse">
-              <thead
-                className={`uppercase text-[10px] tracking-wider border-b ${
-                  isLight
-                    ? 'bg-zinc-50 border-zinc-200 text-zinc-600'
-                    : 'bg-zinc-950 border-zinc-800 text-zinc-400'
-                }`}
-              >
-                <tr>
-                  <th className="py-2.5 px-3 font-medium">Ad Soyad</th>
-                  <th className="py-2.5 px-3 font-medium">Kurum & Unvan</th>
-                  <th className="py-2.5 px-3 font-medium">Kategori</th>
-                  <th className="py-2.5 px-3 font-medium">Instagram</th>
-                  <th className="py-2.5 px-3 font-medium">YouTube</th>
-                  <th className="py-2.5 px-3 font-medium">Paylaşım Oranı</th>
-                  <th className="py-2.5 px-3 font-medium text-right">
-                    <span>Durum</span>
-                  </th>
-                  <th className="py-2.5 px-3 font-medium text-right">İşlemler</th>
-                </tr>
-              </thead>
-              <tbody className={`divide-y ${isLight ? 'divide-zinc-200 bg-white' : 'divide-zinc-800 bg-zinc-950'}`}>
-                {filteredGuests.map((g) => {
-                  const igUrl = g.instagram
-                    ? `https://instagram.com/${g.instagram.handle.replace('@', '')}`
-                    : null;
-                  const ytUrl = g.youtube
-                    ? `https://youtube.com/${g.youtube.handle.startsWith('@') ? g.youtube.handle : `@${g.youtube.handle}`}`
-                    : null;
+        {/* =====================================================================
+            SEKME 2 & 3: PR & VIP VE BASIN & MEDYA LİSTESİ
+           ===================================================================== */}
+        {(activeTab === 'pr' || activeTab === 'press') && (
+          <div className="p-8 space-y-6 max-w-7xl mx-auto w-full">
+            {/* Üst Filtre & Arama Barı */}
+            <div
+              className={`p-4 rounded-2xl border ${
+                isDark ? 'bg-[#0e0e12] border-zinc-800' : 'bg-white border-zinc-200'
+              } flex flex-wrap items-center justify-between gap-4`}
+            >
+              <div className="flex items-center gap-3 flex-1 min-w-[280px]">
+                <div className="relative flex-1">
+                  <Search className="w-4 h-4 text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    placeholder="İsim, kurum, @instagram veya @youtube ara..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className={`w-full pl-9 pr-4 py-2 rounded-xl text-xs border focus:outline-none transition ${
+                      isDark
+                        ? 'bg-zinc-900 border-zinc-800 text-zinc-200 placeholder-zinc-500 focus:border-amber-500'
+                        : 'bg-zinc-50 border-zinc-200 text-zinc-900 placeholder-zinc-400 focus:border-amber-500'
+                    }`}
+                  />
+                </div>
 
-                  return (
+                {/* Hızlı Dönüşüm Filtresi */}
+                <select
+                  value={selectedConversionFilter}
+                  onChange={(e) => setSelectedConversionFilter(e.target.value)}
+                  className={`px-3 py-2 rounded-xl text-xs border focus:outline-none cursor-pointer ${
+                    isDark ? 'bg-zinc-900 border-zinc-800 text-zinc-200' : 'bg-zinc-50 border-zinc-200 text-zinc-800'
+                  }`}
+                  style={{ colorScheme: isDark ? 'dark' : 'light' }}
+                >
+                  <option value="ALL">Tüm Sadakat Düzeyleri</option>
+                  <option value="HIGH">Yüksek Dönüşüm (%75+ Paylaşım)</option>
+                  <option value="LOW">Düşük Dönüşüm (&lt;%50)</option>
+                  <option value="GHOST">Paylaşım Yapmayanlar (Ghosted)</option>
+                  <option value="INVITED">Yalnızca Davet Edilenler</option>
+                </select>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    handleBulkSelectRule('OVER_1M');
+                    setIsInviteModalOpen(true);
+                  }}
+                  className="px-3 py-2 rounded-xl text-xs font-semibold border border-amber-500/40 text-amber-400 hover:bg-amber-500/10 transition flex items-center gap-1.5"
+                >
+                  <Flame className="w-3.5 h-3.5" />
+                  <span>1M+ Takipçilileri Davet Et</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Misafir Tablosu / Kart Listesi */}
+            <div
+              className={`rounded-2xl border overflow-hidden ${
+                isDark ? 'bg-[#0e0e12] border-zinc-800' : 'bg-white border-zinc-200'
+              } shadow-sm`}
+            >
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead>
                     <tr
-                      key={g.id}
-                      className={`transition ${isLight ? 'hover:bg-zinc-50' : 'hover:bg-zinc-900/40'}`}
+                      className={`border-b ${
+                        isDark ? 'border-zinc-800/80 bg-zinc-900/50 text-zinc-400' : 'border-zinc-200 bg-zinc-50 text-zinc-600'
+                      }`}
                     >
-                      {/* Sütun 1: Ad Soyad (İsme tıklanınca düz kişi detay çekmecesi açılır) */}
-                      <td className="py-2.5 px-3 font-medium">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSelectedGuestForDrawer(g);
-                            setDrawerNotes(g.hostNotes || '');
-                          }}
-                          className={`hover:underline text-left text-xs ${
-                            isLight ? 'text-zinc-950' : 'text-zinc-100'
-                          }`}
-                          title="Kişi detaylarını incele / not düzenle"
-                        >
-                          {g.firstName} {g.lastName}
-                        </button>
-                      </td>
-
-                      {/* Sütun 2: Kurum & Unvan */}
-                      <td className="py-2.5 px-3 text-zinc-600 dark:text-zinc-400 truncate max-w-[180px]">
-                        {g.company} · {g.title}
-                      </td>
-
-                      {/* Sütun 3: Kategori (Düz yazı, çerçeveli rozet yok) */}
-                      <td className="py-2.5 px-3">
-                        <span className="text-zinc-700 dark:text-zinc-300">
-                          {g.category === 'PR' ? 'PR' : 'Basın'}
-                        </span>
-                      </td>
-
-                      {/* Sütun 4: Instagram (Düz link) */}
-                      <td className="py-2.5 px-3 font-mono">
-                        {igUrl && g.instagram ? (
-                          <a
-                            href={igUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="hover:underline text-zinc-700 dark:text-zinc-300"
-                          >
-                            {g.instagram.handle} ({g.instagram.followersText.replace(' Takipçi', '')})
-                          </a>
-                        ) : (
-                          <span className="text-zinc-400">-</span>
-                        )}
-                      </td>
-
-                      {/* Sütun 5: YouTube (Düz link) */}
-                      <td className="py-2.5 px-3 font-mono">
-                        {ytUrl && g.youtube ? (
-                          <a
-                            href={ytUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="hover:underline text-zinc-700 dark:text-zinc-300"
-                          >
-                            {g.youtube.handle} ({g.youtube.followersText.replace(' Abone', '')})
-                          </a>
-                        ) : (
-                          <span className="text-zinc-400">-</span>
-                        )}
-                      </td>
-
-                      {/* Sütun 6: Paylaşım Oranı */}
-                      <td className="py-2.5 px-3 font-mono">
-                        <span>
-                          %{g.prConversionRate} ({g.totalPostsForHost}/{g.totalAttendedForHost})
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => handleIncrementPost(g.id)}
-                          className="ml-2.5 text-[11px] underline text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
-                          title="+ Paylaşım İşle"
-                        >
-                          <span>+1 İşle</span>
-                        </button>
-                      </td>
-
-                      {/* Sütun 7: Durum (SALT OKUNUR DÜZ YAZI — KESİNLİKLE DAVET ET BUTONU YOK) */}
-                      <td className="py-2.5 px-3 text-right">
-                        {g.lcvStatus === 'CONFIRMED' ? (
-                          <div className="inline-flex flex-col items-end">
-                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[11px] font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
-                              <CheckCircle2 className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
-                              <span>LCV Onaylandı (QR Bilet Hazır)</span>
-                            </span>
-                            {g.plusOneNames ? (
-                              <span className="text-[10px] text-zinc-500 mt-0.5">
-                                +1: {g.plusOneNames}
-                              </span>
-                            ) : null}
-                          </div>
-                        ) : g.lcvStatus === 'DECLINED' ? (
-                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[11px] font-semibold bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/30">
-                            <span>Katılamıyor (LCV Red)</span>
-                          </span>
-                        ) : (
-                          <span className="text-zinc-700 dark:text-zinc-300">
-                            {g.invitationState === 'INVITED' ? 'Davetli' : g.invitationState === 'WAITLIST' ? 'Yedek' : '-'}
-                          </span>
-                        )}
-                      </td>
-
-                      {/* Sütun 8: İşlemler (DÜZ METİN BUTONLAR: DÜZENLE & SİL — KESİNLİKLE DAVET ET BUTONU YOK) */}
-                      <td className="py-2.5 px-3 text-right shrink-0 whitespace-nowrap">
-                        <div className="flex items-center justify-end gap-2">
-                          <button
-                            type="button"
-                            onClick={() => handleOpenEditGuest(g)}
-                            className="text-xs text-zinc-600 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white underline"
-                            title="Davetliyi Düzenle"
-                          >Düzenle</button>
-                          <span className="text-zinc-300 dark:text-zinc-700">|</span>
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteGuest(g.id)}
-                            className="text-xs text-rose-600 dark:text-rose-400 hover:text-rose-800 dark:hover:text-rose-200 underline"
-                            title="Davetliyi Sil"
-                          >Sil</button>
-                        </div>
-                      </td>
+                      <th className="py-3 px-4 font-semibold">Davetli / Kurum</th>
+                      <th className="py-3 px-4 font-semibold">Instagram İstatistiği</th>
+                      <th className="py-3 px-4 font-semibold">YouTube İstatistiği</th>
+                      <th className="py-3 px-4 font-semibold">Sadakat & Katılım Oranı</th>
+                      <th className="py-3 px-4 font-semibold">LCV & Davet Durumu</th>
+                      <th className="py-3 px-4 font-semibold text-right">Aksiyon</th>
                     </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                  </thead>
+                  <tbody className="divide-y divide-zinc-800/40">
+                    {filteredGuests.map((guest) => {
+                      const igUrl = guest.instagram
+                        ? `https://instagram.com/${guest.instagram.handle.replace('@', '')}`
+                        : null;
+                      const ytUrl = guest.youtube
+                        ? `https://youtube.com/${guest.youtube.handle.replace('@', '')}`
+                        : null;
+
+                      return (
+                        <tr
+                          key={guest.id}
+                          className={`group transition ${
+                            isDark ? 'hover:bg-zinc-900/50' : 'hover:bg-zinc-50'
+                          }`}
+                        >
+                          {/* İsim & Kurum */}
+                          <td className="py-3.5 px-4">
+                            <div className="flex items-center gap-3">
+                              <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-amber-500/20 to-orange-500/30 text-amber-400 flex items-center justify-center font-bold text-xs uppercase border border-amber-500/20">
+                                {guest.firstName[0]}
+                                {guest.lastName[0]}
+                              </div>
+                              <div>
+                                <button
+                                  onClick={() => setSelectedGuestForDrawer(guest)}
+                                  className="font-bold text-xs hover:text-amber-500 transition text-left"
+                                >
+                                  {guest.firstName} {guest.lastName}
+                                </button>
+                                <div className="text-[11px] text-zinc-400 truncate max-w-[200px]">
+                                  {guest.company} · {guest.title}
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+
+                          {/* Instagram Bilgisi (Yeni Sekmede Açılır) */}
+                          <td className="py-3.5 px-4">
+                            {guest.instagram ? (
+                              <a
+                                href={igUrl!}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-pink-500/10 text-pink-400 hover:bg-pink-500/20 transition font-medium text-[11px] group/link"
+                              >
+                                <Instagram className="w-3.5 h-3.5 text-pink-400" />
+                                <span>{guest.instagram.handle}</span>
+                                <span className="font-bold text-zinc-200 font-mono">
+                                  ({guest.instagram.followersText})
+                                </span>
+                                <ArrowUpRight className="w-3 h-3 opacity-0 group-hover/link:opacity-100 transition" />
+                              </a>
+                            ) : (
+                              <span className="text-[11px] text-zinc-500 italic">Yok</span>
+                            )}
+                          </td>
+
+                          {/* YouTube Bilgisi (Yeni Sekmede Açılır) */}
+                          <td className="py-3.5 px-4">
+                            {guest.youtube ? (
+                              <a
+                                href={ytUrl!}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 transition font-medium text-[11px] group/link"
+                              >
+                                <Youtube className="w-3.5 h-3.5 text-red-400" />
+                                <span>{guest.youtube.handle}</span>
+                                <span className="font-bold text-zinc-200 font-mono">
+                                  ({guest.youtube.followersText})
+                                </span>
+                                <ArrowUpRight className="w-3 h-3 opacity-0 group-hover/link:opacity-100 transition" />
+                              </a>
+                            ) : (
+                              <span className="text-[11px] text-zinc-500 italic">Yok</span>
+                            )}
+                          </td>
+
+                          {/* Sadakat Skoru & Katılım Rasyosu */}
+                          <td className="py-3.5 px-4">
+                            <div className="flex items-center gap-2">
+                              <span
+                                className={`text-[10px] px-2 py-0.5 rounded font-bold font-mono ${
+                                  guest.hostLoyaltyScore >= 95
+                                    ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
+                                    : guest.hostLoyaltyScore >= 85
+                                    ? 'bg-blue-500/15 text-blue-400 border border-blue-500/30'
+                                    : 'bg-zinc-800 text-zinc-400'
+                                }`}
+                              >
+                                {guest.hostLoyaltyScore.toFixed(0)} Puan
+                              </span>
+                              <span className="text-[11px] text-zinc-400">
+                                {guest.totalAttendedForHost}/{guest.totalInvitedByHost} Katılım ({guest.totalPostsForHost} Paylaşım)
+                              </span>
+                            </div>
+                          </td>
+
+                          {/* LCV & Davet Durumu */}
+                          <td className="py-3.5 px-4">
+                            {guest.invitationState === 'INVITED' ? (
+                              <span
+                                className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-md ${
+                                  guest.lcvStatus === 'CONFIRMED'
+                                    ? 'bg-emerald-500/15 text-emerald-400'
+                                    : 'bg-amber-500/15 text-amber-400'
+                                }`}
+                              >
+                                <CheckCircle2 className="w-3 h-3" />
+                                {guest.lcvStatus === 'CONFIRMED' ? 'LCV Onaylı (+1)' : 'Davet İletildi'}
+                              </span>
+                            ) : (
+                              <span className="text-[11px] text-zinc-500">Davet Edilmedi</span>
+                            )}
+                          </td>
+
+                          {/* Aksiyon */}
+                          <td className="py-3.5 px-4 text-right">
+                            <button
+                              onClick={() => setSelectedGuestForDrawer(guest)}
+                              className="px-2.5 py-1 text-xs rounded-lg border border-zinc-700 hover:border-amber-500 hover:text-amber-400 transition"
+                            >
+                              Detay & Kart
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* =====================================================================
+            SEKME 4: SEÇİLİ GALA DETAYI VEYA GEÇMİŞ ARŞİV
+           ===================================================================== */}
+        {(activeTab === 'gala' || activeTab === 'archive') && (
+          <div className="p-8 space-y-8 max-w-7xl mx-auto w-full">
+            {/* Gala Detay Kartı */}
+            <div
+              className={`rounded-3xl border p-8 bg-gradient-to-r ${selectedGala.bannerGradient} ${
+                isDark ? 'border-zinc-800' : 'border-zinc-300'
+              } shadow-xl`}
+            >
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs px-2.5 py-0.5 rounded-full bg-amber-500 text-zinc-950 font-bold uppercase">
+                      {selectedGala.isHistoricalArchive ? 'Geçmiş Arşiv' : 'Sıradaki Gala'}
+                    </span>
+                    <span className="text-xs text-zinc-400">{selectedGala.distributor}</span>
+                  </div>
+                  <h2 className="text-2xl font-bold">{selectedGala.title}</h2>
+                  <p className="text-xs text-zinc-300 max-w-2xl">{selectedGala.synopsis}</p>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  {!selectedGala.isHistoricalArchive && (
+                    <button
+                      onClick={() => {
+                        setInviteSelectedGuestIds([]);
+                        setIsInviteModalOpen(true);
+                      }}
+                      className="px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-zinc-950 font-bold rounded-xl text-xs transition shadow-lg shadow-amber-500/20"
+                    >
+                      Bu Gala İçin Davetiye Gönder
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Arşiv Galaları Koleksiyonu (Eğer Archive sekmesindeyse) */}
+            {activeTab === 'archive' && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {galas
+                  .filter((g) => g.isHistoricalArchive)
+                  .map((archived) => (
+                    <div
+                      key={archived.id}
+                      className={`p-6 rounded-2xl border ${
+                        isDark ? 'bg-[#0e0e12] border-zinc-800' : 'bg-white border-zinc-200'
+                      } space-y-4`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-amber-500">{archived.movieTitle}</span>
+                        <span className="text-xs text-zinc-400">{archived.archiveDate}</span>
+                      </div>
+                      <h3 className="text-base font-bold">{archived.title}</h3>
+                      <p className="text-xs text-zinc-400">{archived.synopsis}</p>
+                      <div className="pt-2 flex items-center justify-between text-xs border-t border-zinc-800/50">
+                        <span className="text-zinc-400">Katılım Oranı</span>
+                        <span className="font-bold text-emerald-400">%{archived.occupancyRate} (Kapasite Doldu)</span>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            )}
           </div>
         )}
       </main>
 
-      {/* --------------------------------------------------------------------- */}
-      {/* 3. MODALLAR VE ÇEKMECELER (KESKİN / DÜZ ÇİZGİLİ)                      */}
-      {/* --------------------------------------------------------------------- */}
-
-      {/* ÇEKMECE: KİŞİ DETAY & DÜZENLEME YAN ÇEKMECESİ */}
+      {/* =========================================================================
+          YAN ÇEKMECE: DAVETLİ DETAY KARTI (SLIDE-OVER DRAWER)
+         ========================================================================= */}
       {selectedGuestForDrawer && (
-        <div className="fixed inset-0 z-50 overflow-hidden">
+        <div className="fixed inset-0 z-50 flex justify-end">
           <div
-            className="absolute inset-0 bg-black/50 transition-opacity"
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm"
             onClick={() => setSelectedGuestForDrawer(null)}
           />
-          <div className="fixed inset-y-0 right-0 max-w-full flex pl-10">
-            <div
-              className={`w-screen max-w-md border-l p-6 flex flex-col justify-between ${
-                isLight ? 'bg-white border-zinc-300 text-zinc-900' : 'bg-zinc-950 border-zinc-800 text-zinc-100'
-              }`}
-            >
-              <div className="space-y-4 overflow-y-auto pr-1">
-                {/* Çekmece Üst Başlık */}
-                <div className="flex items-center justify-between pb-3 border-b border-zinc-200 dark:border-zinc-800">
-                  <div>
-                    <h3 className={`text-sm font-semibold ${isLight ? 'text-zinc-950' : 'text-white'}`}>
-                      {selectedGuestForDrawer.firstName} {selectedGuestForDrawer.lastName}
-                    </h3>
-                    <p className="text-xs text-zinc-400 mt-0.5">
-                      {selectedGuestForDrawer.title} · {selectedGuestForDrawer.company}
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedGuestForDrawer(null)}
-                    className="text-xs px-2 py-1 border border-zinc-300 dark:border-zinc-700"
-                  >
-                    Kapat
-                  </button>
-                </div>
-
-                {/* İletişim Bilgileri (Maskeli PII) */}
-                <div
-                  className={`p-3 border space-y-2 text-xs ${
-                    isLight ? 'bg-zinc-50 border-zinc-200' : 'bg-zinc-900/60 border-zinc-800'
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-zinc-500">Maskeli E-Posta:</span>
-                    <span className={`font-mono ${isLight ? 'text-zinc-800' : 'text-zinc-300'}`}>
-                      {selectedGuestForDrawer.maskedEmail}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-zinc-500">Maskeli Telefon:</span>
-                    <span className={`font-mono ${isLight ? 'text-zinc-800' : 'text-zinc-300'}`}>
-                      {selectedGuestForDrawer.maskedPhone}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-zinc-500">Kategori:</span>
-                    <span className="font-mono">{selectedGuestForDrawer.category}</span>
-                  </div>
-                </div>
-
-                {/* Geçmiş Gala İstatistikleri */}
-                <div
-                  className={`p-3 border text-xs space-y-1.5 ${
-                    isLight ? 'bg-zinc-50 border-zinc-200' : 'bg-zinc-900/60 border-zinc-800'
-                  }`}
-                >
-                  <p className="text-zinc-500 font-medium">Geçmiş Gala İstatistikleri:</p>
-                  <p className="font-mono text-xs font-semibold">
-                    {selectedGuestForDrawer.totalInvitedByHost} Davet · {selectedGuestForDrawer.totalAttendedForHost} Katılım · {selectedGuestForDrawer.totalPostsForHost} Paylaşım
-                  </p>
-                  <p className="text-[11px] text-zinc-400">
-                    PR Dönüşüm Oranı: %{selectedGuestForDrawer.prConversionRate} ({selectedGuestForDrawer.conversionTier})
-                  </p>
-                </div>
-
-                {/* Yönetici Notu Düzenleme */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-zinc-500 block">
-                    Yönetici Notu:
-                  </label>
-                  <textarea
-                    rows={4}
-                    value={drawerNotes}
-                    onChange={(e) => setDrawerNotes(e.target.value)}
-                    className={`w-full text-xs p-2.5 border rounded-none focus:outline-none ${
-                      isLight
-                        ? 'bg-white border-zinc-300 text-zinc-900'
-                        : 'bg-zinc-900 border-zinc-700 text-zinc-200'
-                    }`}
-                  />
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => handleSaveGuestNotes(selectedGuestForDrawer.id)}
-                      className={`px-3 py-1.5 rounded-none text-xs font-medium border transition ${
-                        isLight
-                          ? 'bg-zinc-900 text-white border-zinc-900 hover:bg-zinc-800'
-                          : 'bg-white text-zinc-950 border-white hover:bg-zinc-200'
-                      }`}
-                    >
-                      Notu Kaydet
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        handleOpenEditGuest(selectedGuestForDrawer);
-                        setSelectedGuestForDrawer(null);
-                      }}
-                      className={`px-3 py-1.5 rounded-none text-xs font-medium border transition ${
-                        isLight
-                          ? 'bg-white border-zinc-300 text-zinc-800 hover:bg-zinc-100'
-                          : 'bg-zinc-900 border-zinc-700 text-zinc-200 hover:bg-zinc-800'
-                      }`}
-                    >
-                      Tüm Bilgileri Düzenle
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Çekmece Alt Aksiyon Butonları */}
-              <div className="pt-4 border-t border-zinc-200 dark:border-zinc-800 flex items-center justify-between gap-2">
-                <button
-                  type="button"
-                  onClick={() => handleToggleState(selectedGuestForDrawer.id, 'WAITLIST')}
-                  className={`px-3 py-1.5 rounded-none text-xs font-medium border transition ${
-                    isLight
-                      ? 'bg-white border-zinc-300 text-zinc-700 hover:bg-zinc-100'
-                      : 'bg-zinc-900 border-zinc-700 text-zinc-300 hover:bg-zinc-800'
-                  }`}
-                >
-                  Yedek Listeye Al
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleDeleteGuest(selectedGuestForDrawer.id)}
-                  className="px-3 py-1.5 rounded-none text-xs font-medium text-rose-600 hover:bg-rose-50 border border-transparent transition"
-                >
-                  Havuzdan Sil
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL 1: AYARLAR MODALI (TEMA, ARKA PLAN MOTORU, ŞİFRE DEĞİŞTİRME, KURUMSAL İMZA, VERİSETİ RESET) */}
-      {isSettingsModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
           <div
-            className={`max-w-lg w-full p-6 border rounded-none space-y-4 max-h-[90vh] overflow-y-auto ${
-              isLight ? 'bg-white border-zinc-300 text-zinc-900' : 'bg-zinc-950 border-zinc-800 text-zinc-100'
+            className={`relative w-full max-w-md h-full shadow-2xl p-6 overflow-y-auto border-l flex flex-col justify-between ${
+              isDark ? 'bg-[#0e0e12] border-zinc-800 text-zinc-100' : 'bg-white border-zinc-200 text-zinc-900'
             }`}
           >
-            <div className="flex items-center justify-between pb-3 border-b border-zinc-200 dark:border-zinc-800">
-              <h3 className={`text-sm font-semibold uppercase tracking-wider ${isLight ? 'text-zinc-950' : 'text-white'}`}>
-                Hesap & Portal Ayarları
-              </h3>
-              <button
-                type="button"
-                onClick={() => setIsSettingsModalOpen(false)}
-                className="text-xs px-2 py-1 border border-zinc-300 dark:border-zinc-700"
-              >
-                Kapat
-              </button>
-            </div>
-
-            {/* A. ÖZELLEŞTİRİLEBİLİR ARKA PLAN MOTORU (Custom Background Engine) */}
-            <div className="space-y-2 text-xs">
-              <label className="text-xs font-medium text-zinc-500 uppercase tracking-wider block">
-                Arayüz Arka Planı & Renk Paleti
-              </label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {BG_PRESETS.map((preset) => (
-                  <button
-                    key={preset.id}
-                    type="button"
-                    onClick={() => handleSelectBgPreset(preset)}
-                    className={`p-2 border rounded-none transition text-left flex items-center justify-between ${
-                      customBgColor.toUpperCase() === preset.color.toUpperCase()
-                        ? isLight
-                          ? 'border-zinc-900 bg-zinc-100 text-zinc-950 font-semibold'
-                          : 'border-white bg-zinc-900 text-white font-semibold'
-                        : isLight
-                        ? 'border-zinc-300 bg-white text-zinc-600 hover:bg-zinc-50'
-                        : 'border-zinc-700 bg-zinc-900 text-zinc-400 hover:bg-zinc-800'
-                    }`}
-                  >
-                    <span>{preset.label}</span>
-                    <span
-                      className="w-3.5 h-3.5 border border-zinc-400 shrink-0"
-                      style={{ backgroundColor: preset.color }}
-                    />
-                  </button>
-                ))}
+            <div className="space-y-6">
+              <div className="flex items-center justify-between border-b pb-4 border-zinc-800/60">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-amber-500 uppercase tracking-wider">
+                    Davetli PR Profili
+                  </span>
+                </div>
+                <button
+                  onClick={() => setSelectedGuestForDrawer(null)}
+                  className="p-1 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-zinc-100"
+                >
+                  <X className="w-5 h-5" />
+                </button>
               </div>
 
-              {/* Özel Renk Seçici & Görsel URL */}
-              <div className="pt-2 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+              {/* İsim ve Başlık */}
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-amber-500 to-orange-500 flex items-center justify-center text-zinc-950 font-bold text-lg shadow-lg">
+                  {selectedGuestForDrawer.firstName[0]}
+                  {selectedGuestForDrawer.lastName[0]}
+                </div>
                 <div>
-                  <span className="text-zinc-500 block mb-1">Özel Renk Seçici (customBgColor):</span>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="color"
-                      value={customBgColor.startsWith('#') ? customBgColor : '#FFFFFF'}
-                      onChange={(e) => handleCustomColorChange(e.target.value)}
-                      className="w-8 h-8 p-0 border border-zinc-300 cursor-pointer rounded-none"
-                    />
-                    <input
-                      type="text"
-                      value={customBgColor}
-                      onChange={(e) => handleCustomColorChange(e.target.value)}
-                      className={`flex-1 px-2 py-1 font-mono text-xs border rounded-none focus:outline-none ${
-                        isLight ? 'bg-white border-zinc-300 text-zinc-900' : 'bg-zinc-900 border-zinc-700 text-zinc-100'
-                      }`}
-                      placeholder="#FFFFFF"
-                    />
+                  <h3 className="text-lg font-bold">
+                    {selectedGuestForDrawer.firstName} {selectedGuestForDrawer.lastName}
+                  </h3>
+                  <div className="text-xs text-zinc-400">
+                    {selectedGuestForDrawer.company} · {selectedGuestForDrawer.title}
                   </div>
-                </div>
-
-                <div>
-                  <span className="text-zinc-500 block mb-1">Özel Arka Plan Görseli (URL):</span>
-                  <input
-                    type="text"
-                    value={customBgImage}
-                    onChange={(e) => handleCustomImageChange(e.target.value)}
-                    placeholder="https://..."
-                    className={`w-full px-2 py-1.5 text-xs border rounded-none focus:outline-none ${
-                      isLight ? 'bg-white border-zinc-300 text-zinc-900' : 'bg-zinc-900 border-zinc-700 text-zinc-100'
-                    }`}
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* B. HIZLI TEMA GEÇİŞİ (TEST VE GERİYE DÖNÜK UYUMLULUK) */}
-            <div className="space-y-2 text-xs pt-3 border-t border-zinc-200 dark:border-zinc-800">
-              <label className="text-xs font-medium text-zinc-500 uppercase tracking-wider block">
-                Arayüz Teması
-              </label>
-              <div className="grid grid-cols-2 gap-3 text-xs">
-                <button
-                  type="button"
-                  onClick={() => handleSetTheme('dark')}
-                  className={`p-2.5 border rounded-none transition text-left ${
-                    !isLight
-                      ? 'border-white bg-zinc-900 text-white font-semibold'
-                      : 'border-zinc-300 bg-white text-zinc-600 hover:bg-zinc-100'
-                  }`}
-                >
-                  Koyu Tema (Antrasit)
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleSetTheme('light')}
-                  className={`p-2.5 border rounded-none transition text-left ${
-                    isLight
-                      ? 'border-zinc-900 bg-zinc-100 text-zinc-950 font-semibold'
-                      : 'border-zinc-700 bg-zinc-900 text-zinc-400 hover:bg-zinc-800'
-                  }`}
-                >
-                  Açık Tema (Düz Beyaz)
-                </button>
-              </div>
-            </div>
-
-            {/* C. ŞİFRE DEĞİŞTİRME FORMU */}
-            <form onSubmit={handleChangePassword} className="space-y-3 pt-3 border-t border-zinc-200 dark:border-zinc-800 text-xs">
-              <label className="text-xs font-medium text-zinc-500 uppercase tracking-wider block">
-                Hesap Güvenliği & Şifre Değiştir
-              </label>
-              <div>
-                <span className="text-zinc-500 block mb-1">Mevcut Şifre:</span>
-                <input
-                  type="password"
-                  value={currentPassword}
-                  onChange={(e) => setCurrentPassword(e.target.value)}
-                  placeholder="Mevcut şifreniz"
-                  className={`w-full px-3 py-1.5 border rounded-none focus:outline-none ${
-                    isLight ? 'bg-white border-zinc-300 text-zinc-900' : 'bg-zinc-900 border-zinc-700 text-zinc-100'
-                  }`}
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <span className="text-zinc-500 block mb-1">Yeni Şifre:</span>
-                  <input
-                    type="password"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="En az 8 karakter"
-                    className={`w-full px-3 py-1.5 border rounded-none focus:outline-none ${
-                      isLight ? 'bg-white border-zinc-300 text-zinc-900' : 'bg-zinc-900 border-zinc-700 text-zinc-100'
-                    }`}
-                  />
-                </div>
-                <div>
-                  <span className="text-zinc-500 block mb-1">Yeni Şifre (Tekrar):</span>
-                  <input
-                    type="password"
-                    value={newPasswordConfirm}
-                    onChange={(e) => setNewPasswordConfirm(e.target.value)}
-                    placeholder="Tekrar giriniz"
-                    className={`w-full px-3 py-1.5 border rounded-none focus:outline-none ${
-                      isLight ? 'bg-white border-zinc-300 text-zinc-900' : 'bg-zinc-900 border-zinc-700 text-zinc-100'
-                    }`}
-                  />
-                </div>
-              </div>
-              <button
-                type="submit"
-                className={`px-3 py-1.5 rounded-none text-xs font-medium border transition ${
-                  isLight
-                    ? 'bg-zinc-900 text-white border-zinc-900 hover:bg-zinc-800'
-                    : 'bg-white text-zinc-950 border-white hover:bg-zinc-200'
-                }`}
-              >
-                Şifreyi Güncelle
-              </button>
-            </form>
-
-            {/* D. KURUMSAL DAVETİYE İMZASI & BİLDİRİMLER */}
-            <div className="space-y-3 pt-3 border-t border-zinc-200 dark:border-zinc-800 text-xs">
-              <label className="text-xs font-medium text-zinc-500 uppercase tracking-wider block">
-                Kurumsal Davetiye İmzası
-              </label>
-              <input
-                type="text"
-                value={emailSignature}
-                onChange={(e) => setEmailSignature(e.target.value)}
-                className={`w-full px-3 py-1.5 border rounded-none focus:outline-none ${
-                  isLight ? 'bg-white border-zinc-300 text-zinc-900' : 'bg-zinc-900 border-zinc-700 text-zinc-100'
-                }`}
-              />
-
-              <label className="flex items-center gap-2 cursor-pointer pt-1">
-                <input
-                  type="checkbox"
-                  checked={vipNotificationEnabled}
-                  onChange={(e) => setVipNotificationEnabled(e.target.checked)}
-                  className="rounded-none cursor-pointer"
-                />
-                <span className="text-zinc-500">VIP konuk LCV onayladığında bildirim gönder</span>
-              </label>
-            </div>
-
-            {/* E. DAVETLİ HAVUZU VERİSETİ YÖNETİMİ & SIFIRLAMA */}
-            <div className="space-y-2 pt-3 border-t border-zinc-200 dark:border-zinc-800 text-xs">
-              <label className="text-xs font-medium text-zinc-500 uppercase tracking-wider block">
-                Davetli Havuzu Veritabanı
-              </label>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={handleResetToDefaultGuests}
-                  className={`px-3 py-1.5 rounded-none text-xs font-medium border transition ${
-                    isLight
-                      ? 'bg-zinc-100 border-zinc-300 text-zinc-800 hover:bg-zinc-200'
-                      : 'bg-zinc-800 border-zinc-700 text-zinc-200 hover:bg-zinc-700'
-                  }`}
-                >
-                  Varsayılan Listeye Sıfırla
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setIsClearAllConfirmOpen(true)}
-                  className="px-3 py-1.5 rounded-none text-xs font-medium text-rose-600 hover:bg-rose-50 border border-transparent transition"
-                >
-                  Tüm Listeyi Temizle
-                </button>
-              </div>
-            </div>
-
-            {/* F. DAVETİYE BAĞLANTI ADRESİ (BASE URL) AYARI */}
-            <div className="space-y-2 pt-3 border-t border-zinc-200 dark:border-zinc-800 text-xs">
-              <label className="text-xs font-medium text-zinc-500 uppercase tracking-wider block">
-                Davetiye Bağlantı Adresi (Base URL)
-              </label>
-              <p className="text-[11px] text-zinc-500 leading-normal">
-                E-postalardaki &quot;LCV Onayla &amp; QR Biletini Al&quot; butonunun ve açık yedek bağlantının gideceği temel adres.
-              </p>
-              <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  value={hostBaseUrl}
-                  onChange={(e) => handleUpdateBaseUrl(e.target.value)}
-                  placeholder="http://localhost:3000"
-                  className={`flex-1 px-3 py-1.5 border rounded-none font-mono text-xs focus:outline-none ${
-                    isLight ? 'bg-white border-zinc-300 text-zinc-900' : 'bg-zinc-900 border-zinc-700 text-zinc-100'
-                  }`}
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
-                    handleUpdateBaseUrl(origin);
-                    showToast(`Mevcut adres ayarlandı: ${origin}`);
-                  }}
-                  className={`px-2.5 py-1.5 text-xs font-medium border transition ${
-                    isLight
-                      ? 'bg-zinc-100 border-zinc-300 text-zinc-800 hover:bg-zinc-200'
-                      : 'bg-zinc-800 border-zinc-700 text-zinc-200 hover:bg-zinc-700'
-                  }`}
-                >
-                  Mevcut URL
-                </button>
-              </div>
-            </div>
-
-            <div className="pt-2 flex justify-end">
-              <button
-                type="button"
-                onClick={() => {
-                  setIsSettingsModalOpen(false);
-                  showToast('Tüm tercihler ve ayarlar kaydedildi.');
-                }}
-                className={`px-4 py-2 rounded-none text-xs font-medium ${
-                  isLight ? 'bg-zinc-900 text-white hover:bg-zinc-800' : 'bg-white text-zinc-950 hover:bg-zinc-200'
-                }`}
-              >
-                Kaydet & Kapat
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL 2: TEKİL KİŞİ EKLEME MODALI */}
-      {isAddGuestModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
-          <div
-            className={`max-w-lg w-full p-6 border rounded-none space-y-4 ${
-              isLight ? 'bg-white border-zinc-300 text-zinc-900' : 'bg-zinc-950 border-zinc-800 text-zinc-100'
-            }`}
-          >
-            <div className="flex items-center justify-between pb-3 border-b border-zinc-200 dark:border-zinc-800">
-              <h3 className={`text-sm font-semibold uppercase tracking-wider ${isLight ? 'text-zinc-950' : 'text-white'}`}>
-                Yeni Konuk Ekle (Tekil)
-              </h3>
-              <button
-                type="button"
-                onClick={() => setIsAddGuestModalOpen(false)}
-                className="text-xs px-2 py-1 border border-zinc-300 dark:border-zinc-700"
-              >
-                Kapat
-              </button>
-            </div>
-
-            <form onSubmit={handleAddSingleGuest} className="space-y-3 text-xs">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-zinc-500 block mb-1">Ad:</label>
-                  <input
-                    type="text"
-                    required
-                    value={newGuestFirstName}
-                    onChange={(e) => setNewGuestFirstName(e.target.value)}
-                    className={`w-full px-3 py-1.5 border rounded-none focus:outline-none ${
-                      isLight ? 'bg-white border-zinc-300 text-zinc-900' : 'bg-zinc-900 border-zinc-700 text-zinc-100'
-                    }`}
-                  />
-                </div>
-                <div>
-                  <label className="text-zinc-500 block mb-1">Soyad:</label>
-                  <input
-                    type="text"
-                    required
-                    value={newGuestLastName}
-                    onChange={(e) => setNewGuestLastName(e.target.value)}
-                    className={`w-full px-3 py-1.5 border rounded-none focus:outline-none ${
-                      isLight ? 'bg-white border-zinc-300 text-zinc-900' : 'bg-zinc-900 border-zinc-700 text-zinc-100'
-                    }`}
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-zinc-500 block mb-1">Kurum / Ajans:</label>
-                  <input
-                    type="text"
-                    value={newGuestCompany}
-                    onChange={(e) => setNewGuestCompany(e.target.value)}
-                    className={`w-full px-3 py-1.5 border rounded-none focus:outline-none ${
-                      isLight ? 'bg-white border-zinc-300 text-zinc-900' : 'bg-zinc-900 border-zinc-700 text-zinc-100'
-                    }`}
-                  />
-                </div>
-                <div>
-                  <label className="text-zinc-500 block mb-1">Unvan:</label>
-                  <input
-                    type="text"
-                    value={newGuestTitle}
-                    onChange={(e) => setNewGuestTitle(e.target.value)}
-                    className={`w-full px-3 py-1.5 border rounded-none focus:outline-none ${
-                      isLight ? 'bg-white border-zinc-300 text-zinc-900' : 'bg-zinc-900 border-zinc-700 text-zinc-100'
-                    }`}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="text-zinc-500 block mb-1">Kategori:</label>
-                <select
-                  value={newGuestCategory}
-                  onChange={(e) => setNewGuestCategory(e.target.value as any)}
-                  className={`w-full px-3 py-1.5 border rounded-none focus:outline-none ${
-                    isLight ? 'bg-white border-zinc-300 text-zinc-900' : 'bg-zinc-900 border-zinc-700 text-zinc-100'
-                  }`}
-                >
-                  <option value="PR">PR & VIP (Oyuncu, Influencer, Creator)</option>
-                  <option value="PRESS">Basın & Medya (Gazete, Dergi, TV)</option>
-                </select>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-zinc-500 block mb-1">Instagram (@handle):</label>
-                  <input
-                    type="text"
-                    placeholder="@kullanici"
-                    value={newGuestIgHandle}
-                    onChange={(e) => setNewGuestIgHandle(e.target.value)}
-                    className={`w-full px-3 py-1.5 border rounded-none focus:outline-none ${
-                      isLight ? 'bg-white border-zinc-300 text-zinc-900' : 'bg-zinc-900 border-zinc-700 text-zinc-100'
-                    }`}
-                  />
-                </div>
-                <div>
-                  <label className="text-zinc-500 block mb-1">Takipçi (Örn: 1.5M veya 450K):</label>
-                  <input
-                    type="text"
-                    placeholder="1.5M"
-                    value={newGuestIgFollowers}
-                    onChange={(e) => setNewGuestIgFollowers(e.target.value)}
-                    className={`w-full px-3 py-1.5 border rounded-none focus:outline-none ${
-                      isLight ? 'bg-white border-zinc-300 text-zinc-900' : 'bg-zinc-900 border-zinc-700 text-zinc-100'
-                    }`}
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-zinc-500 block mb-1">YouTube (@kanal):</label>
-                  <input
-                    type="text"
-                    placeholder="@kanal"
-                    value={newGuestYtHandle}
-                    onChange={(e) => setNewGuestYtHandle(e.target.value)}
-                    className={`w-full px-3 py-1.5 border rounded-none focus:outline-none ${
-                      isLight ? 'bg-white border-zinc-300 text-zinc-900' : 'bg-zinc-900 border-zinc-700 text-zinc-100'
-                    }`}
-                  />
-                </div>
-                <div>
-                  <label className="text-zinc-500 block mb-1">Abone (Örn: 500K):</label>
-                  <input
-                    type="text"
-                    placeholder="500K"
-                    value={newGuestYtSubscribers}
-                    onChange={(e) => setNewGuestYtSubscribers(e.target.value)}
-                    className={`w-full px-3 py-1.5 border rounded-none focus:outline-none ${
-                      isLight ? 'bg-white border-zinc-300 text-zinc-900' : 'bg-zinc-900 border-zinc-700 text-zinc-100'
-                    }`}
-                  />
-                </div>
-              </div>
-
-              <div className="pt-2 flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setIsAddGuestModalOpen(false)}
-                  className="px-3 py-1.5 border border-zinc-300 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400"
-                >
-                  İptal
-                </button>
-                <button
-                  type="submit"
-                  className={`px-4 py-1.5 font-medium rounded-none ${
-                    isLight ? 'bg-zinc-900 text-white hover:bg-zinc-800' : 'bg-white text-zinc-950 hover:bg-zinc-200'
-                  }`}
-                >
-                  Havuza Ekle
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL 3: — TEK GENEL "DAVET ET" SEÇİM PENCERESİ                     */}
-      {/* TÜM İSİM LİSTESİ + AYNI ANDA CANLI MAİL PREVIEW (SPLIT-VIEW)                  */}
-      {isCampaignModalOpen && campaignTargetGala && (
-        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
-          <div
-            className={`border rounded-none max-w-6xl w-full p-6 space-y-4 max-h-[92vh] flex flex-col ${
-              isLight ? 'bg-white border-zinc-200' : 'bg-zinc-950 border-zinc-800'
-            }`}
-          >
-            {/* Modal Üst Başlık */}
-            <div className="flex items-center justify-between border-b pb-3 border-zinc-200 dark:border-zinc-800">
-              <div>
-                <h3 className={`text-sm font-semibold tracking-wide uppercase ${isLight ? 'text-zinc-950' : 'text-white'}`}>
-                  Gala Davetiyesi — {selectedGala.title}
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsCampaignModalOpen(false)}
-                className="text-xs px-2.5 py-1 border border-zinc-300 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-900"
-              >
-                Kapat
-              </button>
-            </div>
-
-            {/* 2 SÜTUNLU SPLIT-VIEW (HER ZAMAN YAN YANA MAİL PREVIEW) */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 min-h-0 overflow-y-auto lg:overflow-hidden">
-              {/* SOL KOLON: TÜM İSİM LİSTESİ & SEÇİM (LG:COL-SPAN-7) */}
-              <div className="lg:col-span-7 flex flex-col min-h-0 space-y-3 lg:overflow-y-auto pr-0 lg:pr-2">
-                {/* 1. Gala Detayları */}
-                <div className={`p-3 border space-y-2 text-xs ${isLight ? 'bg-zinc-50 border-zinc-200' : 'bg-zinc-900/50 border-zinc-800'}`}>
-                  <div className="text-[11px] font-semibold text-zinc-500 uppercase tracking-wider">
-                    Gala Operasyon Bilgileri
-                  </div>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                    <div>
-                      <span className="text-zinc-500 block mb-1 text-[11px]">Tarih:</span>
-                      <input
-                        type="text"
-                        value={campaignDate}
-                        onChange={(e) => setCampaignDate(e.target.value)}
-                        className={`w-full px-2 py-1 text-xs border rounded-none focus:outline-none ${
-                          isLight ? 'bg-white border-zinc-300 text-zinc-900' : 'bg-zinc-900 border-zinc-700 text-zinc-100'
-                        }`}
-                      />
-                    </div>
-                    <div>
-                      <span className="text-zinc-500 block mb-1 text-[11px]">Saatler:</span>
-                      <div className="flex gap-1">
-                        <input
-                          type="text"
-                          value={campaignTimeOpen}
-                          onChange={(e) => setCampaignTimeOpen(e.target.value)}
-                          className={`w-1/2 px-1 py-1 text-xs text-center border rounded-none focus:outline-none ${
-                            isLight ? 'bg-white border-zinc-300 text-zinc-900' : 'bg-zinc-900 border-zinc-700 text-zinc-100'
-                          }`}
-                        />
-                        <input
-                          type="text"
-                          value={campaignTimeStart}
-                          onChange={(e) => setCampaignTimeStart(e.target.value)}
-                          className={`w-1/2 px-1 py-1 text-xs text-center border rounded-none focus:outline-none ${
-                            isLight ? 'bg-white border-zinc-300 text-zinc-900' : 'bg-zinc-900 border-zinc-700 text-zinc-100'
-                          }`}
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <span className="text-zinc-500 block mb-1 text-[11px]">Mekan:</span>
-                      <input
-                        type="text"
-                        value={campaignVenue}
-                        onChange={(e) => setCampaignVenue(e.target.value)}
-                        className={`w-full px-2 py-1 text-xs border rounded-none focus:outline-none ${
-                          isLight ? 'bg-white border-zinc-300 text-zinc-900' : 'bg-zinc-900 border-zinc-700 text-zinc-100'
-                        }`}
-                      />
-                    </div>
-                    <div>
-                      <span className="text-zinc-500 block mb-1 text-[11px]">Kapasite:</span>
-                      <input
-                        type="number"
-                        value={campaignCapacity}
-                        onChange={(e) => setCampaignCapacity(parseInt(e.target.value) || 0)}
-                        className={`w-full px-2 py-1 text-xs border rounded-none focus:outline-none ${
-                          isLight ? 'bg-white border-zinc-300 text-zinc-900' : 'bg-zinc-900 border-zinc-700 text-zinc-100'
-                        }`}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* 2. Özel Davetiye Mesajı */}
-                <div className="space-y-1 text-xs">
-                  <label className="text-[11px] font-semibold text-zinc-500 uppercase tracking-wider block">
-                    Davetiye İçerik Metni (Kişiselleştirilmiş)
-                  </label>
-                  <textarea
-                    rows={2}
-                    value={customInviteMessage}
-                    onChange={(e) => setCustomInviteMessage(e.target.value)}
-                    className={`w-full p-2 text-xs border rounded-none focus:outline-none ${
-                      isLight ? 'bg-white border-zinc-300 text-zinc-900' : 'bg-zinc-900 border-zinc-700 text-zinc-100'
-                    }`}
-                  />
-                </div>
-
-                {/* 3. Hızlı Seçim Filtreleri */}
-                <div className="flex items-center gap-1.5 flex-wrap text-xs">
-                  <span className="text-zinc-500 text-[11px]">Hızlı Seç:</span>
-                  <button
-                    type="button"
-                    onClick={handleSelect1MPlus}
-                    className={`px-2 py-1 border rounded-none text-[11px] ${
-                      isLight ? 'border-zinc-300 hover:bg-zinc-100' : 'border-zinc-700 hover:bg-zinc-800'
-                    }`}
-                  >
-                    1M+ Erişim
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleSelectPress}
-                    className={`px-2 py-1 border rounded-none text-[11px] ${
-                      isLight ? 'border-zinc-300 hover:bg-zinc-100' : 'border-zinc-700 hover:bg-zinc-800'
-                    }`}
-                  >
-                    Tüm Basın
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleSelectHighPr}
-                    className={`px-2 py-1 border rounded-none text-[11px] ${
-                      isLight ? 'border-zinc-300 hover:bg-zinc-100' : 'border-zinc-700 hover:bg-zinc-800'
-                    }`}
-                  >
-                    %75+ PR Dönüşüm
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleSelectAll}
-                    className={`px-2 py-1 border rounded-none text-[11px] ${
-                      isLight ? 'border-zinc-300 hover:bg-zinc-100' : 'border-zinc-700 hover:bg-zinc-800'
-                    }`}
-                  >
-                    Tümünü Seç
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleClearSelection}
-                    className="px-2 py-1 text-zinc-400 hover:text-zinc-600 text-[11px]"
-                  >
-                    Temizle
-                  </button>
-                </div>
-
-                {/* 4. Tüm İsimlerin Seçimli Listesi */}
-                <div className="flex-1 min-h-[220px] overflow-y-auto border divide-y border-zinc-200 dark:border-zinc-800 divide-zinc-200 dark:divide-zinc-800">
-                  {guests
-                    .filter((g) => {
-                      if (!modalGuestSearch) return true;
-                      const q = modalGuestSearch.toLowerCase();
-                      return (
-                        `${g.firstName} ${g.lastName}`.toLowerCase().includes(q) ||
-                        g.company.toLowerCase().includes(q)
-                      );
-                    })
-                    .map((g) => {
-                      const isSelected = selectedGuestIds.includes(g.id);
-                      return (
-                        <div
-                          key={g.id}
-                          onClick={() => toggleSelectGuest(g.id)}
-                          className={`p-2.5 flex items-center justify-between text-xs cursor-pointer transition ${
-                            isSelected
-                              ? isLight
-                                ? 'bg-zinc-100 text-zinc-950 font-medium'
-                                : 'bg-zinc-900 text-white font-medium'
-                              : isLight
-                              ? 'hover:bg-zinc-50 text-zinc-700'
-                              : 'hover:bg-zinc-900/40 text-zinc-300'
-                          }`}
-                        >
-                          <div className="flex items-center gap-2.5">
-                            <input
-                              type="checkbox"
-                              checked={isSelected}
-                              onChange={() => {}}
-                              className="rounded-none cursor-pointer"
-                            />
-                            <div>
-                              <span>
-                                {g.firstName} {g.lastName}
-                              </span>
-                              <span className="text-zinc-500 ml-1.5 font-normal">
-                                ({g.company} · {g.category})
-                              </span>
-                            </div>
-                          </div>
-
-                          <div className="flex items-center gap-3">
-                            <span className="font-mono text-zinc-400 text-[11px]">
-                              {g.instagram ? g.instagram.followersText : g.youtube ? g.youtube.followersText : '-'}
-                            </span>
-                            <span className="font-mono font-semibold text-[11px]">
-                              %{g.prConversionRate}
-                            </span>
-                          </div>
-                        </div>
-                      );
-                    })}
-                </div>
-              </div>
-
-              {/* SAĞ KOLON: AYNI ANDA CANLI MAİL PREVIEW (LG:COL-SPAN-5) */}
-              <div
-                className={`lg:col-span-5 flex flex-col justify-between p-4 border ${
-                  isLight ? 'bg-zinc-50 border-zinc-200 text-zinc-900' : 'bg-zinc-900/40 border-zinc-800 text-zinc-100'
-                }`}
-              >
-                <div className="space-y-3">
-                  <div className="border-b pb-2 border-zinc-200 dark:border-zinc-800">
-                    <h4 className={`text-xs font-semibold uppercase tracking-wider ${isLight ? 'text-zinc-950' : 'text-white'}`}>
-                      E-Posta Davetiye Önizlemesi
-                    </h4>
-                  </div>
-
-                  {/* Mail Meta Bilgileri */}
-                  <div
-                    className={`p-3 border text-xs space-y-1.5 ${
-                      isLight ? 'bg-white border-zinc-200 text-zinc-700' : 'bg-zinc-950 border-zinc-800 text-zinc-300'
-                    }`}
-                  >
-                    <p className="truncate">
-                      <strong>Kimden:</strong> Disney Studios Türkiye &lt;pr@disney.com.tr&gt;
-                    </p>
-                    <p className="truncate">
-                      <strong>Kime:</strong> {previewRecipientText}
-                    </p>
-                    <p className="truncate">
-                      <strong>Konu:</strong> {selectedGala.title} — Gala Davetiyesi
-                    </p>
-                  </div>
-
-                  {/* Canlı Davetiye İçerik Alanı */}
-                  <div
-                    className={`p-4 border space-y-3 ${
-                      isLight ? 'bg-white border-zinc-200' : 'bg-zinc-950 border-zinc-800'
-                    }`}
-                  >
-                    <div className="text-[10px] font-bold tracking-wider uppercase text-zinc-400">
-                      Disney Studios Türkiye
-                    </div>
-                    <div className={`text-sm font-bold ${isLight ? 'text-zinc-950' : 'text-white'}`}>
-                      {selectedGala.title}
-                    </div>
-
-                    <p className={`text-xs leading-relaxed ${isLight ? 'text-zinc-700' : 'text-zinc-300'}`}>
-                      Sayın <strong>{previewGuestName}</strong>, {customInviteMessage}
-                    </p>
-
-                    <div
-                      className={`p-2.5 border text-xs space-y-1 ${
-                        isLight ? 'bg-zinc-50 border-zinc-200 text-zinc-800' : 'bg-zinc-900 border-zinc-800 text-zinc-200'
-                      }`}
-                    >
-                      <p className="text-[11px]">
-                        Tarih & Saat: <strong>{campaignDate} · {campaignTimeOpen} - {campaignTimeStart}</strong>
-                      </p>
-                      <p className="text-[11px]">
-                        Mekan: <strong>{campaignVenue}</strong>
-                      </p>
-                      <p className="text-[11px]">
-                        Kontenjan: <strong>Çift Kişilik Bilet (+{campaignPlusOneDefault})</strong>
-                      </p>
-                      <p className="text-[11px]">
-                        Kapasite: <strong>{campaignCapacity} Kişi (Numarasız LCV)</strong>
-                      </p>
-                    </div>
-
-                    <div className="pt-1">
-                      <button
-                        type="button"
-                        className={`w-full py-2 text-xs font-semibold rounded-none transition ${
-                          isLight
-                            ? 'bg-zinc-900 text-white hover:bg-zinc-800'
-                            : 'bg-white text-zinc-950 hover:bg-zinc-200'
-                        }`}
+                  <div className="flex gap-1.5 mt-1.5">
+                    {selectedGuestForDrawer.hostCustomTags.map((t) => (
+                      <span
+                        key={t}
+                        className="text-[10px] px-2 py-0.5 rounded bg-amber-500/20 text-amber-400 font-semibold"
                       >
-                        LCV Onayla (+1) & Biletini Al
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* E-posta İmzası */}
-                  <div className="text-[11px] text-center pt-1 italic text-zinc-500">
-                    <p>{emailSignature}</p>
+                        {t}
+                      </span>
+                    ))}
                   </div>
                 </div>
               </div>
+
+              {/* Sosyal Medya Metrikleri */}
+              <div className="space-y-3 pt-2">
+                <div className="text-xs font-bold uppercase text-zinc-500 tracking-wider">
+                  Sosyal Medya Kanalları
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="p-3 rounded-xl bg-zinc-900/50 border border-zinc-800">
+                    <div className="flex items-center justify-between text-xs text-pink-400 font-semibold mb-1">
+                      <span>Instagram</span>
+                      <Instagram className="w-3.5 h-3.5" />
+                    </div>
+                    {selectedGuestForDrawer.instagram ? (
+                      <div>
+                        <div className="font-bold text-sm text-zinc-100">
+                          {selectedGuestForDrawer.instagram.followersText}
+                        </div>
+                        <a
+                          href={`https://instagram.com/${selectedGuestForDrawer.instagram.handle.replace('@', '')}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[11px] text-zinc-400 hover:text-amber-400 transition flex items-center gap-1 mt-0.5"
+                        >
+                          <span>{selectedGuestForDrawer.instagram.handle}</span>
+                          <ArrowUpRight className="w-3 h-3" />
+                        </a>
+                      </div>
+                    ) : (
+                      <div className="text-xs text-zinc-500">Mevcut Değil</div>
+                    )}
+                  </div>
+
+                  <div className="p-3 rounded-xl bg-zinc-900/50 border border-zinc-800">
+                    <div className="flex items-center justify-between text-xs text-red-400 font-semibold mb-1">
+                      <span>YouTube</span>
+                      <Youtube className="w-3.5 h-3.5" />
+                    </div>
+                    {selectedGuestForDrawer.youtube ? (
+                      <div>
+                        <div className="font-bold text-sm text-zinc-100">
+                          {selectedGuestForDrawer.youtube.followersText}
+                        </div>
+                        <a
+                          href={`https://youtube.com/${selectedGuestForDrawer.youtube.handle.replace('@', '')}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[11px] text-zinc-400 hover:text-amber-400 transition flex items-center gap-1 mt-0.5"
+                        >
+                          <span>{selectedGuestForDrawer.youtube.handle}</span>
+                          <ArrowUpRight className="w-3 h-3" />
+                        </a>
+                      </div>
+                    ) : (
+                      <div className="text-xs text-zinc-500">Mevcut Değil</div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Geçmiş Katılım ve Sadakat Karnesi */}
+              <div className="space-y-3 pt-2">
+                <div className="text-xs font-bold uppercase text-zinc-500 tracking-wider">
+                  Etkinlik Sadakat Karnesi
+                </div>
+                <div className="p-4 rounded-xl bg-zinc-900/40 border border-zinc-800 space-y-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-zinc-400">Sadakat Skoru</span>
+                    <span className="font-bold text-amber-500 font-mono">
+                      {selectedGuestForDrawer.hostLoyaltyScore} / 100
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-zinc-400">Toplam Davet & Katılım</span>
+                    <span className="font-medium text-zinc-200">
+                      {selectedGuestForDrawer.totalAttendedForHost} Katılım / {selectedGuestForDrawer.totalInvitedByHost} Davet
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-zinc-400">Gala Paylaşım Oranı</span>
+                    <span className="font-bold text-emerald-400">
+                      %{selectedGuestForDrawer.prConversionRate.toFixed(0)} Dönüşüm
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Notlar */}
+              <div className="space-y-2 pt-2">
+                <div className="text-xs font-bold uppercase text-zinc-500 tracking-wider">
+                  Host Direktör Notları
+                </div>
+                <p className="text-xs text-zinc-300 p-3 rounded-xl bg-zinc-900/30 border border-zinc-800/80 leading-relaxed italic">
+                  "{selectedGuestForDrawer.hostNotes}"
+                </p>
+              </div>
             </div>
 
-            {/* SİHİRBAZ ALT BAR */}
-            <div className="pt-3 border-t border-zinc-200 dark:border-zinc-800 flex items-center justify-between text-xs">
-              <span className="text-zinc-500">
-                Seçilen: <strong className={`font-mono text-sm ${isLight ? 'text-zinc-950' : 'text-white'}`}>{selectedGuestIds.length}</strong> Davetli
-              </span>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setIsCampaignModalOpen(false)}
-                  className="px-3 py-1.5 text-xs text-zinc-500 hover:text-zinc-900 dark:hover:text-white"
-                >
-                  İptal
-                </button>
-                <button
-                  type="button"
-                  onClick={handleSendBatchCampaign}
-                  disabled={selectedGuestIds.length === 0}
-                  className={`px-4 py-2 font-semibold text-xs rounded-none transition disabled:opacity-50 ${
-                    isLight
-                      ? 'bg-zinc-900 text-white hover:bg-zinc-800'
-                      : 'bg-white text-zinc-950 hover:bg-zinc-200'
-                  }`}
-                >
-                  <span>Seçilen Kişileri Davet Et ({selectedGuestIds.length})</span>
-                </button>
-              </div>
+            {/* Alt Aksiyon Butonları */}
+            <div className="pt-6 border-t border-zinc-800/60 space-y-2">
+              <button
+                onClick={() => {
+                  setGuests((prev) =>
+                    prev.map((g) =>
+                      g.id === selectedGuestForDrawer.id
+                        ? { ...g, invitationState: 'INVITED', lcvStatus: 'CONFIRMED' }
+                        : g
+                    )
+                  );
+                  showToast(`${selectedGuestForDrawer.firstName} için davet ve LCV teyidi yapıldı!`);
+                  setSelectedGuestForDrawer(null);
+                }}
+                className="w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-zinc-950 font-bold text-xs transition"
+              >
+                Bu Konuğa VIP Davetiye Ata (+1 Kontenjan)
+              </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* MODAL 4: CSV & EXCEL İÇE AKTARMA MODALI (GERÇEK PARSER & KOPYALA-YAPIŞTIR DESTEKLİ) */}
-      {isCsvModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
+      {/* =========================================================================
+          MODAL: YENİ TOPLU DAVETİYE OLUŞTURMA MOTORU (CREATE INVITATION WIZARD)
+         ========================================================================= */}
+      {isInviteModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div
-            className={`max-w-xl w-full p-6 border rounded-none space-y-4 max-h-[92vh] overflow-y-auto ${
-              isLight ? 'bg-white border-zinc-300 text-zinc-900' : 'bg-zinc-950 border-zinc-800 text-zinc-100'
+            className="fixed inset-0 bg-black/70 backdrop-blur-sm"
+            onClick={() => setIsInviteModalOpen(false)}
+          />
+          <div
+            className={`relative w-full max-w-2xl rounded-3xl border shadow-2xl p-6 overflow-hidden flex flex-col max-h-[85vh] ${
+              isDark ? 'bg-[#0e0e12] border-zinc-800 text-zinc-100' : 'bg-white border-zinc-200 text-zinc-900'
             }`}
           >
-            <div className="flex items-center justify-between border-b border-zinc-200 dark:border-zinc-800 pb-3">
+            {/* Modal Başlık */}
+            <div className="flex items-center justify-between border-b pb-4 border-zinc-800/60">
               <div>
-                <h3 className={`text-sm font-semibold uppercase tracking-wider ${isLight ? 'text-zinc-950' : 'text-white'}`}>
-                  Disney Studios Türkiye — Davetli Excel / CSV Yükle
+                <h3 className="text-base font-bold flex items-center gap-2">
+                  <Send className="w-4 h-4 text-amber-500" />
+                  <span>Yeni Gala Davetiyesi Oluştur</span>
                 </h3>
-                <p className="text-xs text-zinc-500 mt-0.5">
-                  Excel dosyasını seçin veya kopyaladığınız satırları doğrudan yapıştırın.
+                <p className="text-xs text-zinc-400 mt-0.5">
+                  Hedef Gala: <strong className="text-zinc-200">{selectedGala.title}</strong>
                 </p>
               </div>
               <button
-                type="button"
-                onClick={() => setIsCsvModalOpen(false)}
-                className="text-xs px-2 py-1 border border-zinc-300 dark:border-zinc-700"
+                onClick={() => setIsInviteModalOpen(false)}
+                className="p-1 rounded-lg hover:bg-zinc-800 text-zinc-400"
               >
-                Kapat
+                <X className="w-5 h-5" />
               </button>
             </div>
 
-            {/* Dosya Yükleme Alanı */}
-            <div className={`p-3 border text-xs space-y-2 ${isLight ? 'bg-zinc-50 border-zinc-200' : 'bg-zinc-900/50 border-zinc-800'}`}>
-              <label className="font-semibold block text-zinc-700 dark:text-zinc-300">
-                1. Bilgisayardan Dosya Seç (.csv, .tsv, .txt, .xlsx):
-              </label>
-              <input
-                type="file"
-                accept=".csv,.tsv,.txt,.xlsx"
-                onChange={handleFileUpload}
-                className="block w-full text-xs text-zinc-500 file:mr-3 file:py-1.5 file:px-3 file:border file:border-zinc-300 file:rounded-none file:text-xs file:font-medium file:bg-white dark:file:bg-zinc-800 dark:file:text-zinc-200 cursor-pointer"
-              />
-            </div>
-
-            {/* Metin Yapıştırma Alanı */}
-            <div className="space-y-2 text-xs">
-              <label className="text-zinc-500 block">
-                2. veya Excel&apos;den Kopyalanan Satırları Doğrudan Yapıştırın (Tab \t, ; veya , ayrılmış):
-              </label>
-              <textarea
-                rows={5}
-                value={csvRawText}
-                onChange={(e) => setCsvRawText(e.target.value)}
-                placeholder="Ad	Soyad	Kurum	Kategori	Instagram	YouTube"
-                className={`w-full font-mono text-xs p-3 border rounded-none focus:outline-none ${
-                  isLight ? 'bg-white border-zinc-300 text-zinc-900' : 'bg-zinc-900 border-zinc-700 text-zinc-100'
-                }`}
-              />
-            </div>
-
-            {/* İçe Aktarma Modu Seçeneği */}
-            <div className="space-y-2 text-xs pt-1">
-              <span className="text-zinc-500 font-medium block">İçe Aktarma Yöntemi:</span>
-              <div className="flex items-center gap-4">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="importMode"
-                    checked={csvImportMode === 'APPEND'}
-                    onChange={() => setCsvImportMode('APPEND')}
-                    className="rounded-none cursor-pointer"
-                  />
-                  <span>Mevcut Listeye Ekle</span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="importMode"
-                    checked={csvImportMode === 'REPLACE'}
-                    onChange={() => setCsvImportMode('REPLACE')}
-                    className="rounded-none cursor-pointer"
-                  />
-                  <span>Mevcut Listeyi Silip Sadece Bu Excel&apos;i Yükle</span>
-                </label>
+            {/* Hızlı Kural Seçicileri */}
+            <div className="py-4 border-b border-zinc-800/40 space-y-3">
+              <div className="text-xs font-semibold text-zinc-400">Akıllı Filtreleme ile Seç:</div>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleBulkSelectRule('OVER_1M')}
+                  className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-amber-500/20 text-amber-400 border border-amber-500/30 hover:bg-amber-500/30 transition flex items-center gap-1.5"
+                >
+                  <Flame className="w-3.5 h-3.5" />
+                  <span>1M+ Takipçili VIP'ler</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleBulkSelectRule('PRESS')}
+                  className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-500/20 text-blue-400 border border-blue-500/30 hover:bg-blue-500/30 transition flex items-center gap-1.5"
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                  <span>Tüm Basın & Eleştirmenler</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleBulkSelectRule('ALL')}
+                  className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-zinc-800 text-zinc-300 hover:bg-zinc-700 transition"
+                >
+                  Tüm Listeyi Seç ({guests.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleBulkSelectRule('CLEAR')}
+                  className="px-3 py-1.5 rounded-lg text-xs font-semibold text-zinc-500 hover:text-zinc-300 transition"
+                >
+                  Seçimi Temizle
+                </button>
               </div>
             </div>
 
-            <div className="pt-2 border-t border-zinc-200 dark:border-zinc-800 flex justify-between items-center">
-              <button
-                type="button"
-                onClick={handleResetToDefaultGuests}
-                className="text-xs text-zinc-500 hover:text-zinc-900 dark:hover:text-white underline"
-              >
-                Varsayılan Listeye Sıfırla
-              </button>
+            {/* Davetli Seçim Listesi (Kaydırılabilir) */}
+            <div className="flex-1 overflow-y-auto py-3 space-y-2">
+              <div className="text-xs font-semibold text-zinc-400 px-1">
+                Seçilen Davetliler ({inviteSelectedGuestIds.length} Kişi)
+              </div>
+              {guests.map((guest) => {
+                const isSelected = inviteSelectedGuestIds.includes(guest.id);
+                return (
+                  <div
+                    key={guest.id}
+                    onClick={() => toggleInviteGuest(guest.id)}
+                    className={`p-3 rounded-xl border cursor-pointer flex items-center justify-between transition ${
+                      isSelected
+                        ? isDark
+                          ? 'bg-amber-500/10 border-amber-500/40 text-zinc-100'
+                          : 'bg-amber-50 border-amber-300 text-zinc-900'
+                        : isDark
+                        ? 'bg-zinc-900/30 border-zinc-800/60 hover:bg-zinc-900/60'
+                        : 'bg-zinc-50 border-zinc-200 hover:bg-zinc-100'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div
+                        className={`w-5 h-5 rounded-md border flex items-center justify-center transition ${
+                          isSelected
+                            ? 'bg-amber-500 border-amber-500 text-zinc-950 font-bold'
+                            : 'border-zinc-600 bg-transparent'
+                        }`}
+                      >
+                        {isSelected && <Check className="w-3.5 h-3.5" />}
+                      </div>
+                      <div>
+                        <div className="font-bold text-xs">
+                          {guest.firstName} {guest.lastName}
+                        </div>
+                        <div className="text-[11px] text-zinc-400">
+                          {guest.company} · {guest.title}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="text-right">
+                      <div className="text-xs font-bold text-zinc-200">
+                        {guest.instagram ? guest.instagram.followersText : 'Instagram Yok'}
+                      </div>
+                      <div className="text-[10px] text-zinc-400">
+                        {guest.category === 'PR' ? 'PR & VIP' : 'Basın & Medya'}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Modal Alt: Gönderim & Konfigürasyon */}
+            <div className="pt-4 border-t border-zinc-800/60 flex items-center justify-between">
+              <div className="text-xs text-zinc-400">
+                Seçilen: <strong className="text-amber-500">{inviteSelectedGuestIds.length}</strong> konuğa kriptolu QR davetiyesi iletilecektir.
+              </div>
               <div className="flex gap-2">
                 <button
                   type="button"
-                  onClick={() => setIsCsvModalOpen(false)}
-                  className="px-3 py-1.5 border border-zinc-300 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400"
+                  onClick={() => setIsInviteModalOpen(false)}
+                  className="px-4 py-2 rounded-xl text-xs font-semibold border border-zinc-700 hover:bg-zinc-800 transition"
                 >
                   İptal
                 </button>
                 <button
                   type="button"
-                  onClick={handleImportCsv}
-                  className={`px-4 py-1.5 font-medium rounded-none ${
-                    isLight ? 'bg-zinc-900 text-white hover:bg-zinc-800' : 'bg-white text-zinc-950 hover:bg-zinc-200'
-                  }`}
+                  onClick={handleSendBulkInvites}
+                  disabled={inviteSelectedGuestIds.length === 0}
+                  className="px-5 py-2 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed text-zinc-950 transition shadow-lg shadow-amber-500/20"
                 >
-                  İçe Aktar ve Kaydet
+                  Davetiyeleri Gönder
                 </button>
               </div>
             </div>
@@ -3516,629 +1759,13 @@ export default function HostPortalPage() {
         </div>
       )}
 
-      {/* MODAL 5: — TAM BİLGİLİ DAVETLİ DÜZENLEME MODALI */}
-      {isEditGuestModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
-          <div
-            className={`max-w-xl w-full p-6 border rounded-none space-y-4 max-h-[92vh] overflow-y-auto ${
-              isLight ? 'bg-white border-zinc-300 text-zinc-900' : 'bg-zinc-950 border-zinc-800 text-zinc-100'
-            }`}
-          >
-            <div className="flex items-center justify-between pb-3 border-b border-zinc-200 dark:border-zinc-800">
-              <div>
-                <h3 className={`text-sm font-semibold uppercase tracking-wider ${isLight ? 'text-zinc-950' : 'text-white'}`}>
-                  Davetli Bilgilerini Düzenle
-                </h3>
-                <p className="text-xs text-zinc-500 mt-0.5">Tüm alanları ve sosyal medya verilerini güncelleyin.</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsEditGuestModalOpen(false)}
-                className="text-xs px-2 py-1 border border-zinc-300 dark:border-zinc-700"
-              >
-                Kapat
-              </button>
-            </div>
-
-            <form onSubmit={handleUpdateGuest} className="space-y-3 text-xs">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-zinc-500 block mb-1">Ad:</label>
-                  <input
-                    type="text"
-                    required
-                    value={editFirstName}
-                    onChange={(e) => setEditFirstName(e.target.value)}
-                    className={`w-full px-3 py-1.5 border rounded-none focus:outline-none ${
-                      isLight ? 'bg-white border-zinc-300 text-zinc-900' : 'bg-zinc-900 border-zinc-700 text-zinc-100'
-                    }`}
-                  />
-                </div>
-                <div>
-                  <label className="text-zinc-500 block mb-1">Soyad:</label>
-                  <input
-                    type="text"
-                    required
-                    value={editLastName}
-                    onChange={(e) => setEditLastName(e.target.value)}
-                    className={`w-full px-3 py-1.5 border rounded-none focus:outline-none ${
-                      isLight ? 'bg-white border-zinc-300 text-zinc-900' : 'bg-zinc-900 border-zinc-700 text-zinc-100'
-                    }`}
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-zinc-500 block mb-1">Kurum / Ajans:</label>
-                  <input
-                    type="text"
-                    value={editCompany}
-                    onChange={(e) => setEditCompany(e.target.value)}
-                    className={`w-full px-3 py-1.5 border rounded-none focus:outline-none ${
-                      isLight ? 'bg-white border-zinc-300 text-zinc-900' : 'bg-zinc-900 border-zinc-700 text-zinc-100'
-                    }`}
-                  />
-                </div>
-                <div>
-                  <label className="text-zinc-500 block mb-1">Unvan:</label>
-                  <input
-                    type="text"
-                    value={editTitle}
-                    onChange={(e) => setEditTitle(e.target.value)}
-                    className={`w-full px-3 py-1.5 border rounded-none focus:outline-none ${
-                      isLight ? 'bg-white border-zinc-300 text-zinc-900' : 'bg-zinc-900 border-zinc-700 text-zinc-100'
-                    }`}
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-zinc-500 block mb-1">Kategori:</label>
-                  <select
-                    value={editCategory}
-                    onChange={(e) => setEditCategory(e.target.value as any)}
-                    className={`w-full px-3 py-1.5 border rounded-none focus:outline-none ${
-                      isLight ? 'bg-white border-zinc-300 text-zinc-900' : 'bg-zinc-900 border-zinc-700 text-zinc-100'
-                    }`}
-                  >
-                    <option value="PR">PR & VIP (Oyuncu, Influencer)</option>
-                    <option value="PRESS">Basın & Medya (Gazete, TV, Dergi)</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="text-zinc-500 block mb-1">Davet Durumu:</label>
-                  <select
-                    value={editInvitationState}
-                    onChange={(e) => setEditInvitationState(e.target.value as any)}
-                    className={`w-full px-3 py-1.5 border rounded-none focus:outline-none ${
-                      isLight ? 'bg-white border-zinc-300 text-zinc-900' : 'bg-zinc-900 border-zinc-700 text-zinc-100'
-                    }`}
-                  >
-                    <option value="IDLE">Davet Bekliyor (-)</option>
-                    <option value="INVITED">Davet Edildi</option>
-                    <option value="WAITLIST">Yedek Liste</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-zinc-500 block mb-1">Instagram (@handle):</label>
-                  <input
-                    type="text"
-                    placeholder="@kullanici"
-                    value={editIgHandle}
-                    onChange={(e) => setEditIgHandle(e.target.value)}
-                    className={`w-full px-3 py-1.5 border rounded-none focus:outline-none ${
-                      isLight ? 'bg-white border-zinc-300 text-zinc-900' : 'bg-zinc-900 border-zinc-700 text-zinc-100'
-                    }`}
-                  />
-                </div>
-                <div>
-                  <label className="text-zinc-500 block mb-1">Instagram Takipçi (Örn: 2.4M veya 450K):</label>
-                  <input
-                    type="text"
-                    placeholder="2.4M veya 450K"
-                    value={editIgFollowers}
-                    onChange={(e) => setEditIgFollowers(e.target.value)}
-                    className={`w-full px-3 py-1.5 border rounded-none focus:outline-none ${
-                      isLight ? 'bg-white border-zinc-300 text-zinc-900' : 'bg-zinc-900 border-zinc-700 text-zinc-100'
-                    }`}
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-zinc-500 block mb-1">YouTube (@kanal):</label>
-                  <input
-                    type="text"
-                    placeholder="@kanal"
-                    value={editYtHandle}
-                    onChange={(e) => setEditYtHandle(e.target.value)}
-                    className={`w-full px-3 py-1.5 border rounded-none focus:outline-none ${
-                      isLight ? 'bg-white border-zinc-300 text-zinc-900' : 'bg-zinc-900 border-zinc-700 text-zinc-100'
-                    }`}
-                  />
-                </div>
-                <div>
-                  <label className="text-zinc-500 block mb-1">YouTube Abone (Örn: 750K):</label>
-                  <input
-                    type="text"
-                    placeholder="750K"
-                    value={editYtSubscribers}
-                    onChange={(e) => setEditYtSubscribers(e.target.value)}
-                    className={`w-full px-3 py-1.5 border rounded-none focus:outline-none ${
-                      isLight ? 'bg-white border-zinc-300 text-zinc-900' : 'bg-zinc-900 border-zinc-700 text-zinc-100'
-                    }`}
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-zinc-500 block mb-1">Katıldığı Gala Sayısı:</label>
-                  <input
-                    type="number"
-                    min="1"
-                    value={editAttended}
-                    onChange={(e) => setEditAttended(parseInt(e.target.value) || 1)}
-                    className={`w-full px-3 py-1.5 border rounded-none focus:outline-none ${
-                      isLight ? 'bg-white border-zinc-300 text-zinc-900' : 'bg-zinc-900 border-zinc-700 text-zinc-100'
-                    }`}
-                  />
-                </div>
-                <div>
-                  <label className="text-zinc-500 block mb-1">Yaptığı Paylaşım Sayısı:</label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={editPosts}
-                    onChange={(e) => setEditPosts(parseInt(e.target.value) || 0)}
-                    className={`w-full px-3 py-1.5 border rounded-none focus:outline-none ${
-                      isLight ? 'bg-white border-zinc-300 text-zinc-900' : 'bg-zinc-900 border-zinc-700 text-zinc-100'
-                    }`}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="text-zinc-500 block mb-1">Yönetici Notu:</label>
-                <textarea
-                  rows={3}
-                  value={editNotes}
-                  onChange={(e) => setEditNotes(e.target.value)}
-                  className={`w-full px-3 py-1.5 border rounded-none focus:outline-none ${
-                    isLight ? 'bg-white border-zinc-300 text-zinc-900' : 'bg-zinc-900 border-zinc-700 text-zinc-100'
-                  }`}
-                />
-              </div>
-
-              <div className="pt-2 flex justify-between items-center">
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (editingGuestId) handleDeleteGuest(editingGuestId);
-                    setIsEditGuestModalOpen(false);
-                  }}
-                  className="px-3 py-1.5 text-xs text-rose-600 hover:bg-rose-50 border border-transparent transition"
-                >
-                  Bu Kişiyi Sil
-                </button>
-
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setIsEditGuestModalOpen(false)}
-                    className="px-3 py-1.5 border border-zinc-300 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400"
-                  >
-                    İptal
-                  </button>
-                  <button
-                    type="submit"
-                    className={`px-4 py-1.5 font-medium rounded-none ${
-                      isLight ? 'bg-zinc-900 text-white hover:bg-zinc-800' : 'bg-white text-zinc-950 hover:bg-zinc-200'
-                    }`}
-                  >
-                    Değişiklikleri Kaydet
-                  </button>
-                </div>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL 6: YENİ GALA / ARŞİV EKLEME */}
-      {isEventModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
-          <div
-            className={`max-w-md w-full p-6 border rounded-none space-y-4 ${
-              isLight ? 'bg-white border-zinc-300 text-zinc-900' : 'bg-zinc-950 border-zinc-800 text-zinc-100'
-            }`}
-          >
-            <div className="flex items-center justify-between pb-3 border-b border-zinc-200 dark:border-zinc-800">
-              <h3 className={`text-sm font-semibold uppercase tracking-wider ${isLight ? 'text-zinc-950' : 'text-white'}`}>
-                Yeni Gala / Arşiv Tanımla
-              </h3>
-              <button
-                type="button"
-                onClick={() => setIsEventModalOpen(false)}
-                className="text-xs px-2 py-1 border border-zinc-300 dark:border-zinc-700"
-              >
-                Kapat
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateEvent} className="space-y-3 text-xs">
-              <div>
-                <label className="text-zinc-500 block mb-1">Gala Başlığı:</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Örn: Mufasa: Aslan Kral Galası"
-                  value={newEventTitle}
-                  onChange={(e) => setNewEventTitle(e.target.value)}
-                  className={`w-full px-3 py-1.5 border rounded-none focus:outline-none ${
-                    isLight ? 'bg-white border-zinc-300 text-zinc-900' : 'bg-zinc-900 border-zinc-700 text-zinc-100'
-                  }`}
-                />
-              </div>
-
-              <div>
-                <label className="text-zinc-500 block mb-1">Film Adı:</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Örn: Mufasa"
-                  value={newEventMovie}
-                  onChange={(e) => setNewEventMovie(e.target.value)}
-                  className={`w-full px-3 py-1.5 border rounded-none focus:outline-none ${
-                    isLight ? 'bg-white border-zinc-300 text-zinc-900' : 'bg-zinc-900 border-zinc-700 text-zinc-100'
-                  }`}
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-zinc-500 block mb-1">Mekan:</label>
-                  <input
-                    type="text"
-                    value={newEventVenue}
-                    onChange={(e) => setNewEventVenue(e.target.value)}
-                    className={`w-full px-3 py-1.5 border rounded-none focus:outline-none ${
-                      isLight ? 'bg-white border-zinc-300 text-zinc-900' : 'bg-zinc-900 border-zinc-700 text-zinc-100'
-                    }`}
-                  />
-                </div>
-                <div>
-                  <label className="text-zinc-500 block mb-1">Kapasite:</label>
-                  <input
-                    type="number"
-                    value={newEventCapacity}
-                    onChange={(e) => setNewEventCapacity(parseInt(e.target.value) || 0)}
-                    className={`w-full px-3 py-1.5 border rounded-none focus:outline-none ${
-                      isLight ? 'bg-white border-zinc-300 text-zinc-900' : 'bg-zinc-900 border-zinc-700 text-zinc-100'
-                    }`}
-                  />
-                </div>
-              </div>
-
-              <div className="pt-1">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={newEventIsArchive}
-                    onChange={(e) => setNewEventIsArchive(e.target.checked)}
-                    className="rounded-none cursor-pointer"
-                  />
-                  <span className="text-zinc-600 dark:text-zinc-400">
-                    Geçmiş Arşiv Galası (Tamamlanmış Etkinlik)
-                  </span>
-                </label>
-              </div>
-
-              {newEventIsArchive && (
-                <div>
-                  <label className="text-zinc-500 block mb-1">Katılan Davetli Sayısı:</label>
-                  <input
-                    type="number"
-                    value={archiveAttendedCount}
-                    onChange={(e) => setArchiveAttendedCount(parseInt(e.target.value) || 0)}
-                    className={`w-full px-3 py-1.5 border rounded-none focus:outline-none ${
-                      isLight ? 'bg-white border-zinc-300 text-zinc-900' : 'bg-zinc-900 border-zinc-700 text-zinc-100'
-                    }`}
-                  />
-                </div>
-              )}
-
-              <div className="pt-2 flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setIsEventModalOpen(false)}
-                  className="px-3 py-1.5 border border-zinc-300 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400"
-                >
-                  İptal
-                </button>
-                <button
-                  type="submit"
-                  className={`px-4 py-1.5 font-medium rounded-none ${
-                    isLight ? 'bg-zinc-900 text-white hover:bg-zinc-800' : 'bg-white text-zinc-950 hover:bg-zinc-200'
-                  }`}
-                >
-                  Galayı Oluştur
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL 7: — ETKİNLİK / ARŞİV DÜZENLEME MODALI */}
-      {isEditEventModalOpen && selectedGala && (
-        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
-          <div
-            className={`max-w-md w-full p-6 border rounded-none space-y-4 max-h-[92vh] overflow-y-auto ${
-              isLight ? 'bg-white border-zinc-300 text-zinc-900' : 'bg-zinc-950 border-zinc-800 text-zinc-100'
-            }`}
-          >
-            <div className="flex items-center justify-between pb-3 border-b border-zinc-200 dark:border-zinc-800">
-              <h3 className={`text-sm font-semibold uppercase tracking-wider ${isLight ? 'text-zinc-950' : 'text-white'}`}>
-                Etkinlik / Arşiv Bilgilerini Düzenle
-              </h3>
-              <button
-                type="button"
-                onClick={() => setIsEditEventModalOpen(false)}
-                className="text-xs px-2 py-1 border border-zinc-300 dark:border-zinc-700"
-              >
-                Kapat
-              </button>
-            </div>
-
-            <form onSubmit={handleUpdateEvent} className="space-y-3 text-xs">
-              <div>
-                <label className="text-zinc-500 block mb-1">Etkinlik / Gala Başlığı:</label>
-                <input
-                  type="text"
-                  required
-                  value={editEventTitle}
-                  onChange={(e) => setEditEventTitle(e.target.value)}
-                  className={`w-full px-3 py-1.5 border rounded-none focus:outline-none ${
-                    isLight ? 'bg-white border-zinc-300 text-zinc-900' : 'bg-zinc-900 border-zinc-700 text-zinc-100'
-                  }`}
-                />
-              </div>
-
-              <div>
-                <label className="text-zinc-500 block mb-1">Film Adı:</label>
-                <input
-                  type="text"
-                  required
-                  value={editEventMovie}
-                  onChange={(e) => setEditEventMovie(e.target.value)}
-                  className={`w-full px-3 py-1.5 border rounded-none focus:outline-none ${
-                    isLight ? 'bg-white border-zinc-300 text-zinc-900' : 'bg-zinc-900 border-zinc-700 text-zinc-100'
-                  }`}
-                />
-              </div>
-
-              <div>
-                <label className="text-zinc-500 block mb-1">Mekan / Salon:</label>
-                <input
-                  type="text"
-                  required
-                  value={editEventVenue}
-                  onChange={(e) => setEditEventVenue(e.target.value)}
-                  className={`w-full px-3 py-1.5 border rounded-none focus:outline-none ${
-                    isLight ? 'bg-white border-zinc-300 text-zinc-900' : 'bg-zinc-900 border-zinc-700 text-zinc-100'
-                  }`}
-                />
-              </div>
-
-              <div>
-                <label className="text-zinc-500 block mb-1">Tarih / Arşiv Tarihi Bilgisi:</label>
-                <input
-                  type="text"
-                  required
-                  value={editEventDateText}
-                  onChange={(e) => setEditEventDateText(e.target.value)}
-                  className={`w-full px-3 py-1.5 border rounded-none focus:outline-none ${
-                    isLight ? 'bg-white border-zinc-300 text-zinc-900' : 'bg-zinc-900 border-zinc-700 text-zinc-100'
-                  }`}
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-zinc-500 block mb-1">Kapı Açılış Saati:</label>
-                  <input
-                    type="text"
-                    required
-                    value={editEventDoorsOpen}
-                    onChange={(e) => setEditEventDoorsOpen(e.target.value)}
-                    className={`w-full px-3 py-1.5 border rounded-none focus:outline-none ${
-                      isLight ? 'bg-white border-zinc-300 text-zinc-900' : 'bg-zinc-900 border-zinc-700 text-zinc-100'
-                    }`}
-                  />
-                </div>
-                <div>
-                  <label className="text-zinc-500 block mb-1">Başlangıç Saati:</label>
-                  <input
-                    type="text"
-                    required
-                    value={editEventStartsAt}
-                    onChange={(e) => setEditEventStartsAt(e.target.value)}
-                    className={`w-full px-3 py-1.5 border rounded-none focus:outline-none ${
-                      isLight ? 'bg-white border-zinc-300 text-zinc-900' : 'bg-zinc-900 border-zinc-700 text-zinc-100'
-                    }`}
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-zinc-500 block mb-1">Toplam Kapasite:</label>
-                  <input
-                    type="number"
-                    min="1"
-                    required
-                    value={editEventCapacity}
-                    onChange={(e) => setEditEventCapacity(parseInt(e.target.value) || 1)}
-                    className={`w-full px-3 py-1.5 border rounded-none focus:outline-none ${
-                      isLight ? 'bg-white border-zinc-300 text-zinc-900' : 'bg-zinc-900 border-zinc-700 text-zinc-100'
-                    }`}
-                  />
-                </div>
-                <div>
-                  <label className="text-zinc-500 block mb-1">Gerçekleşen / Onaylı Katılımcı Sayısı:</label>
-                  <input
-                    type="number"
-                    min="0"
-                    required
-                    value={editEventConfirmedLcv}
-                    onChange={(e) => setEditEventConfirmedLcv(parseInt(e.target.value) || 0)}
-                    className={`w-full px-3 py-1.5 border rounded-none focus:outline-none ${
-                      isLight ? 'bg-white border-zinc-300 text-zinc-900' : 'bg-zinc-900 border-zinc-700 text-zinc-100'
-                    }`}
-                  />
-                </div>
-              </div>
-
-              <div className="pt-1">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={editEventIsArchive}
-                    onChange={(e) => setEditEventIsArchive(e.target.checked)}
-                    className="rounded-none cursor-pointer"
-                  />
-                  <span className="text-zinc-600 dark:text-zinc-400">
-                    Geçmiş Arşiv Galası (Tamamlanmış Etkinlik)
-                  </span>
-                </label>
-              </div>
-
-              <div className="pt-2 flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setIsEditEventModalOpen(false)}
-                  className="px-3 py-1.5 border border-zinc-300 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400"
-                >
-                  İptal
-                </button>
-                <button
-                  type="submit"
-                  className={`px-4 py-1.5 font-medium rounded-none ${
-                    isLight ? 'bg-zinc-900 text-white hover:bg-zinc-800' : 'bg-white text-zinc-950 hover:bg-zinc-200'
-                  }`}
-                >
-                  Değişiklikleri Kaydet
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL 8: — DAVETLİ SİLME ONAY MODALI */}
-      {deleteConfirmGuest && (
-        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
-          <div
-            className={`max-w-md w-full p-6 border rounded-none space-y-4 ${
-              isLight ? 'bg-white border-zinc-300 text-zinc-900' : 'bg-zinc-950 border-zinc-800 text-zinc-100'
-            }`}
-          >
-            <div className="flex items-center justify-between pb-3 border-b border-zinc-200 dark:border-zinc-800">
-              <h3 className={`text-sm font-semibold uppercase tracking-wider ${isLight ? 'text-zinc-950' : 'text-white'}`}>
-                Silme Onayı
-              </h3>
-              <button
-                type="button"
-                onClick={() => setDeleteConfirmGuest(null)}
-                className="text-xs px-2 py-1 border border-zinc-300 dark:border-zinc-700"
-              >
-                Kapat
-              </button>
-            </div>
-
-            <p className={`text-xs leading-relaxed ${isLight ? 'text-zinc-700' : 'text-zinc-300'}`}>
-              <strong>{deleteConfirmGuest.firstName} {deleteConfirmGuest.lastName}</strong> isimli davetliyi listeden silmek istediğinize emin misiniz?
-            </p>
-
-            <div className="pt-2 flex justify-end gap-2 text-xs">
-              <button
-                type="button"
-                onClick={() => setDeleteConfirmGuest(null)}
-                className={`px-3 py-1.5 border rounded-none transition ${
-                  isLight
-                    ? 'border-zinc-300 text-zinc-700 hover:bg-zinc-100'
-                    : 'border-zinc-700 text-zinc-300 hover:bg-zinc-800'
-                }`}
-              >
-                Vazgeç
-              </button>
-              <button
-                type="button"
-                onClick={confirmDeleteGuest}
-                className="px-4 py-1.5 font-medium rounded-none bg-rose-600 text-white hover:bg-rose-700 transition"
-              >
-                Evet, Sil
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL 9: — TÜM LİSTEYİ SİLME ONAY MODALI */}
-      {isClearAllConfirmOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
-          <div
-            className={`max-w-md w-full p-6 border rounded-none space-y-4 ${
-              isLight ? 'bg-white border-zinc-300 text-zinc-900' : 'bg-zinc-950 border-zinc-800 text-zinc-100'
-            }`}
-          >
-            <div className="flex items-center justify-between pb-3 border-b border-zinc-200 dark:border-zinc-800">
-              <h3 className={`text-sm font-semibold uppercase tracking-wider ${isLight ? 'text-zinc-950' : 'text-white'}`}>
-                Tüm Listeyi Silme Onayı
-              </h3>
-              <button
-                type="button"
-                onClick={() => setIsClearAllConfirmOpen(false)}
-                className="text-xs px-2 py-1 border border-zinc-300 dark:border-zinc-700"
-              >
-                Kapat
-              </button>
-            </div>
-
-            <p className={`text-xs leading-relaxed ${isLight ? 'text-zinc-700' : 'text-zinc-300'}`}>
-              Tüm davetli havuzunu silmek istediğinize emin misiniz? Bu işlem geri alınamaz.
-            </p>
-
-            <div className="pt-2 flex justify-end gap-2 text-xs">
-              <button
-                type="button"
-                onClick={() => setIsClearAllConfirmOpen(false)}
-                className={`px-3 py-1.5 border rounded-none transition ${
-                  isLight
-                    ? 'border-zinc-300 text-zinc-700 hover:bg-zinc-100'
-                    : 'border-zinc-700 text-zinc-300 hover:bg-zinc-800'
-                }`}
-              >
-                Vazgeç
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  handleClearAllGuests();
-                }}
-                className="px-4 py-1.5 font-medium rounded-none bg-rose-600 text-white hover:bg-rose-700 transition"
-              >
-                Evet, Tümünü Sil
-              </button>
-            </div>
-          </div>
+      {/* =========================================================================
+          TOAST BİLDİRİMİ
+         ========================================================================= */}
+      {toastMessage && (
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2.5 px-4 py-3 rounded-2xl bg-zinc-900 text-zinc-100 border border-zinc-700 shadow-2xl text-xs font-medium animate-in fade-in slide-in-from-bottom-3 duration-200">
+          <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+          <span>{toastMessage}</span>
         </div>
       )}
     </div>
